@@ -1,0 +1,205 @@
+{
+  "tokiToken": null,
+  "tao": {},
+  "tokenPriceOracle": {
+    "priceChangeThresholdE18_BN": "5e+16"
+  },
+  "bridge": {
+    "appVersion": 1,
+    "portId": "toki",
+    "nativeTokenPriceFeed": {
+      "initialPseudoPrice_BN": "400e+8"
+    },
+    "relayerFeeGasUsed_BN": "250000",
+    "relayerFeePremiumBPS_BN": "10500",
+    "receiveRetryBlock": 403200,
+    "withdrawRetryBlock": 403200,
+    "externalRetryBlock": 403200
+  },
+  "pools": [ {
+    "deployed": {
+      "bridgeAddress": "",
+      "rewardTokenAddress": "",
+      "poolRepositoryAddress": "",
+      "ethVaultAddress": "",
+      "stableTokenPriceOracleAddress": ""
+    },
+
+    "poolId": 1,
+    "deltaParam": {
+      "batched": true,
+      "defaultSwapMode": false,
+      "defaultLPMode": false,
+      "swapDeltaBP_BN":"500",
+      "lpDeltaBP_BN": "500"
+    },
+    "pooledToken": {
+      "contractName": "PseudoToken",
+      "name": "USDC",
+      "symbol": "USDC",
+      "address": "unimplemented yet",
+      "localDecimals": 18,
+      "globalDecimals": 6,
+      "mintCap_BN": "500e+18",
+      "basePrice_BN": "1e+8",
+      "priceFeed": {
+        "initialPseudoPrice_BN": "1e+8"
+      },
+      "flowRateLimiter": {
+        "limitLD_BN": "1_000_000e+18",
+        "thresholdLD_BN": "50_000e+18",
+        "period": 28800,
+        "lockPeriod": 28800
+      }
+    },
+    "liquidityToken": {
+      "name": "USDC Pool",
+      "symbol": "lpUSDC"
+    },
+    "peers": [
+      {
+        "chainId_BN": "9999",
+        "poolId": 2,
+        "weight": 1000
+      },
+      {
+        "chainId_BN": "1337",
+        "poolId": 1,
+        "weight": 1000
+      },
+      {
+        "chainId_BN": "1337",
+        "poolId": 2,
+        "weight": 1000
+      }
+    ],
+    "maxTotalDepositsLD_BN": "500_000e+18"
+  }, {
+    "deployed": {
+      "bridgeAddress": "",
+      "rewardTokenAddress": "",
+      "poolRepositoryAddress": "",
+      "ethVaultAddress": "",
+      "stableTokenPriceOracleAddress": ""
+    },
+
+    "poolId": 2,
+    "deltaParam": {
+      "batched": true,
+      "defaultSwapMode": false,
+      "defaultLPMode": false,
+      "swapDeltaBP_BN":"500",
+      "lpDeltaBP_BN": "500"
+    },
+    "pooledToken": {
+      "contractName": "PseudoToken",
+      "name": "USDT",
+      "symbol": "USDT",
+      "address": "unimplemented yet",
+      "localDecimals": 18,
+      "globalDecimals": 6,
+      "mintCap_BN": "500e+18",
+      "basePrice_BN": "1e+8",
+      "priceFeed": {
+        "initialPseudoPrice_BN": "1e+8"
+      },
+      "flowRateLimiter": {
+        "limitLD_BN": "1_000_000e+18",
+        "thresholdLD_BN": "50_000e+18",
+        "period": 28800,
+        "lockPeriod": 28800
+      }
+    },
+    "liquidityToken": {
+      "name": "USDT Pool",
+      "symbol": "lpUSDT"
+    },
+    "peers": [
+      {
+        "chainId_BN": "9999",
+        "poolId": 1,
+        "weight": 1000
+      },
+      {
+        "chainId_BN": "1337",
+        "poolId": 1,
+        "weight": 1000
+      },
+      {
+        "chainId_BN": "1337",
+        "poolId": 2,
+        "weight": 1000
+      }
+    ],
+    "maxTotalDepositsLD_BN": "500_000e+18"
+  }, {
+    "deployed": {
+      "bridgeAddress": "",
+      "rewardTokenAddress": "",
+      "poolRepositoryAddress": "",
+      "ethVaultAddress": "",
+      "stableTokenPriceOracleAddress": ""
+    },
+
+    "poolId": 3,
+    "deltaParam": {
+      "batched": true,
+      "defaultSwapMode": false,
+      "defaultLPMode": false,
+      "swapDeltaBP_BN":"500",
+      "lpDeltaBP_BN": "500"
+    },
+    "pooledToken": {
+      "contractName": "PseudoToken",
+      "tokenIdInTokenPriceOracle_BN": "20000",
+      "name": "Ethereum Token",
+      "symbol": "ETH",
+      "address": "unimplemented yet",
+      "localDecimals": 18,
+      "globalDecimals": 18,
+      "mintCap_BN": "1e+17",
+      "basePrice_BN": "4000e+8",
+      "priceFeed": {
+        "initialPseudoPrice_BN": "4000e+8"
+      },
+      "flowRateLimiter": {
+        "limitLD_BN": "200e+18",
+        "thresholdLD_BN": "167e+17",
+        "period": 28800,
+        "lockPeriod": 28800
+      }
+    },
+    "liquidityToken": {
+      "name": "WETH pool",
+      "symbol": "lpWETH"
+    },
+    "peers": [
+      {
+        "chainId_BN": "1337",
+        "poolId": 3,
+        "weight": 1000
+      }
+    ],
+    "maxTotalDepositsLD_BN": "150e+18"
+  } ],
+  "channel": {
+    "deployed": {
+      "bridgeAddress": "",
+      "tokenPriceOracleAddress": ""
+    },
+    "dstChains": [
+      {
+        "chainId_BN": "1337",
+        "portId": "toki",
+        "channelId": "channel-0",
+        "refuelSrcCap_BN": "5e+16",
+        "initialGasPrice_BN": "10e+9",
+        "nativeTokenPriceFeed": {
+          "initialPseudoPrice_BN": "4000e+8"
+        }
+      }
+    ],
+    "refuelDstCap_BN": "5e+16"
+  }
+}
+

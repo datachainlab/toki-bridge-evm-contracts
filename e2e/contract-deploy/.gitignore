@@ -1,0 +1,3 @@
+deploy-*-oneshot-app-0.parameter.json
+testUpgradePool-*.parameter.json
+output/

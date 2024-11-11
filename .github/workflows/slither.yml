@@ -1,0 +1,50 @@
+name: slither-report
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  slither:
+
+    name: Foundry project
+    runs-on: ubuntu-latest
+    env:
+      # https://github.com/foundry-rs/foundry/tags
+      FOUNDRYUP_VERSION: nightly-de33b6af53005037b463318d2628b5cfcaf39916
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Run Slither Analysis
+        uses: crytic/slither-action@v0.3.0
+        id: slither
+        with:
+          slither-config: slither.config.json
+          node-version: 18
+          sarif: results.sarif
+          fail-on: none
+          slither-args: --checklist --markdown-root ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
+          slither-version: 0.10.4
+          solc-version: 0.8.24
+      - name: Format slither output
+        id: formatted_slither
+        run: |
+          value=$(echo "${{ steps.slither.outputs.stdout }}" | sed -e '1d')
+          value="${value//'%'/'%25'}"
+          value="${value//$'\n'/'%0A'}"
+          value="${value//$'\r'/'%0D'}"
+          echo "value=${value}" >> $GITHUB_OUTPUT
+      - name: Create/update checklist as PR comment
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const script = require(".github/script/slither_pr_comment")
+            const header = '# Slither report'
+            const body = `${{ steps.formatted_slither.outputs.value }}`
+            const comment = [header, body].join("\n");
+            await script({github, context, header, body})
+

@@ -1,0 +1,13 @@
+module github.com/datachainlab/toki-bridge-relayer
+
+go 1.21
+
+// uncomment below when you want to use local modified code
+//replace github.com/datachainlab/ethereum-ibc-relay-chain => ./submodules/ethereum-ibc-relay-chain
+//replace github.com/hyperledger-labs/yui-relayer => ./submodules/yui-relayer
+
+require (
+	github.com/datachainlab/ethereum-ibc-relay-chain vIBC_ETH_VERSION
+	github.com/datachainlab/ibc-hd-signer vIBC_HD_SIGNER_VERSION
+	github.com/hyperledger-labs/yui-relayer vRELAYER_VERSION
+)

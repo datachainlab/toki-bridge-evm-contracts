@@ -1,0 +1,17 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "compiler-version": ["error", "^0.8.13"],
+    "custom-errors": "off",
+    "func-visibility": ["warn", { "ignoreConstructors": true }],
+    "max-states-count": ["warn", 23],
+    "no-empty-blocks": "off",
+    "no-global-import": "off",
+    "not-rely-on-time": "off",
+    "reason-string": "off",
+    "one-contract-per-file": "off",
+    "reentrancy": "off",
+    "no-console": "off",
+    "ordering": "warn"
+  }
+}

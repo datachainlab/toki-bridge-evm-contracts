@@ -1,0 +1,14 @@
+[profile.default]
+src = 'src'
+out = 'out'
+libs = ['lib', 'node_modules']
+gas_reports=['*']
+via-ir=false
+#via-ir = true
+solc_version = "0.8.24"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+fs_permissions = [{ access = "read", path = "./"}]
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config

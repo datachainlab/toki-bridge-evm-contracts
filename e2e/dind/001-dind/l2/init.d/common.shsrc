@@ -1,0 +1,7 @@
+# note that $0 should be in init.d directory
+
+INIT_SCRIPT_BASENAME=$(basename $0)
+TOKI_DIR=$(cd $(dirname $0); pwd)/..
+INIT_DIR=${TOKI_DIR}/init.d
+CONF_DIR=${TOKI_DIR}/conf.d
+STAT_DIR=${TOKI_DIR}/status.d

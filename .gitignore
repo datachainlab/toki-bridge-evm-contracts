@@ -1,0 +1,29 @@
+# Compiler files
+cache/
+out/
+
+# Ignores development broadcast logs
+!/broadcast
+/broadcast/*/31337/
+/broadcast/**/dry-run/
+
+# Docs
+docs/
+
+# Dotenv file
+.env
+
+# Node file
+node_modules/
+.env
+coverage
+coverage.json
+typechain
+typechain-types
+
+# Hardhat files
+cache_hardhat
+artifacts
+
+# Upgrades plugin
+.openzeppelin

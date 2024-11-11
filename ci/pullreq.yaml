@@ -1,0 +1,121 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  namespace: toki-contracts
+  generateName: pr-
+  labels:
+    workflows.datachain.jp/on: pull-request
+spec:
+  serviceAccountName: ci
+  ttlStrategy:
+    secondsAfterCompletion: 604800 # == 7d (60 * 60 * 24 * 7)
+  # workflow's spec.tolerations seems not to effect to pod?
+  # tolerations:
+  #   - key: ci
+  #     value: "true"
+  #     effect: NoSchedule
+  podSpecPatch: |
+    tolerations:
+      - key: ci
+        value: "true"
+        effect: NoSchedule
+      - key: "kubernetes.azure.com/scalesetpriority"
+        operator: "Exists"
+        effect: "NoSchedule"
+  #   # all containers definitions are replaced?
+  #   containers:
+  #     - name: main
+  #       resources:
+  #         requests:
+  #           memory: 1024Mi
+  #     - name: dind
+  #       resources:
+  #         requests:
+  #           memory: 1024Mi
+  entrypoint: main
+  hooks:
+    running:
+      expression: workflow.status == "Running"
+      templateRef:
+        clusterScope: true
+        name: github
+        template: create-check-run
+    exit:
+      templateRef:
+        clusterScope: true
+        name: github
+        template: update-check-run
+  arguments:
+    parameters:
+      - name: repository
+      - name: commit
+  templates:
+    - name: main
+      steps:
+        - - name: checkout
+            template: checkout
+        - - name: build
+            template: build
+        - - name: test
+            template: test
+
+    - name: checkout
+      steps:
+        - - name: checkout
+            templateRef:
+              clusterScope: true
+              name: git
+              template: checkout
+            arguments:
+              parameters:
+                - name: custom-script-path
+                  value: ci/custom-script-checkout.sh
+
+    - name: build
+      steps:
+        - - name: build
+            templateRef:
+              clusterScope: true
+              name: image
+              template: build
+            arguments:
+              parameters:
+                - name: platform
+                  value: "linux/amd64"
+                - name: nodepool
+                  value: cix86
+                - name: custom-script-path
+                  value: ci/custom-script-build.sh
+
+    - name: test
+      steps:
+        - - name: test
+            templateRef:
+              clusterScope: true
+              name: image
+              template: build
+            arguments:
+              parameters:
+                - name: platform
+                  value: "linux/amd64"
+                - name: nodepool
+                  value: cix86
+                - name: custom-script-path
+                  value: ci/custom-script-test.sh
+
+  volumeClaimTemplates:
+    - metadata:
+        name: working
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+  volumes:
+    - name: ci-secrets
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: ci

@@ -1,0 +1,10 @@
+[files]
+extend-exclude = [
+    "lib/",
+    "e2e/toki-bridge-local*/",
+    "abi/",
+]
+
+[default.extend-identifiers]
+# TODO: This is due to a typo in ibc-solidity. Once ibc-solidity is fixed, this config will be removed.
+WriteAcknolwedgement = "WriteAcknolwedgement"

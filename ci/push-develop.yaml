@@ -1,0 +1,253 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  namespace: toki-contracts
+  generateName: dev-
+  labels:
+    workflows.datachain.jp/on: push
+    workflows.datachain.jp/branch: develop
+spec:
+  serviceAccountName: ci
+  ttlStrategy:
+    secondsAfterCompletion: 604800 # == 7d (60 * 60 * 24 * 7)
+  podSpecPatch: |
+    tolerations:
+      - key: ci
+        value: "true"
+        effect: NoSchedule
+      - key: arm
+        value: "true"
+        effect: NoSchedule
+      - key: "kubernetes.azure.com/scalesetpriority"
+        operator: "Exists"
+        effect: "NoSchedule"
+  entrypoint: main
+  hooks:
+    running:
+      expression: workflow.status == "Running"
+      templateRef:
+        clusterScope: true
+        name: github
+        template: create-check-run
+    exit:
+      templateRef:
+        clusterScope: true
+        name: github
+        template: update-check-run
+  arguments:
+    parameters:
+      - name: repository
+      - name: commit
+  templates:
+    - name: main
+      steps:
+        - - name: checkout
+            template: checkout
+        - - name: scatter
+            template: scatter
+        - - name: build-amd64
+            template: build-amd64
+          - name: build-arm64
+            template: build-arm64
+        - - name: gather
+            template: gather
+        - - name: push
+            template: push
+        - - name: manifest
+            template: manifest
+
+    - name: checkout
+      steps:
+        - - name: checkout
+            templateRef:
+              clusterScope: true
+              name: git
+              template: checkout
+            arguments:
+              parameters:
+                - name: custom-script-path
+                  value: ci/custom-script-checkout.sh
+
+    - name: scatter
+      script:
+        image: ubuntu:24.04
+        volumeMounts:
+          - name: working
+            mountPath: /working
+          - name: working-arm64
+            mountPath: /working-arm64
+          - name: working-amd64
+            mountPath: /working-amd64
+        command: [ 'bash', '-eux' ]
+        source: |
+          cd /working
+          for d in /working-*; do
+            tar cf - . | (cd $d; tar xf -)
+          done
+
+    - name: build
+      inputs:
+        parameters:
+          - name: arch
+          - name: nodepool
+      steps:
+        - - name: custom-script-build
+            templateRef:
+              clusterScope: true
+              name: image
+              template: build
+            arguments:
+              parameters:
+                - name: working-volume
+                  value: "working-{{inputs.parameters.arch}}"
+                - name: platform
+                  value: "linux/{{inputs.parameters.arch}}"
+                - name: nodepool
+                  value: "{{inputs.parameters.nodepool}}"
+                - name: repository
+                  value: "{{workflow.parameters.repository}}-{{inputs.parameters.arch}}"
+                - name: custom-script-path
+                  value: ci/custom-script-build.sh
+
+    - name: test
+      inputs:
+        parameters:
+          - name: arch
+          - name: nodepool
+      steps:
+        - - name: custom-script-test
+            templateRef:
+              clusterScope: true
+              name: image
+              template: build
+            arguments:
+              parameters:
+                - name: working-volume
+                  value: "working-{{inputs.parameters.arch}}"
+                - name: platform
+                  value: "linux/{{inputs.parameters.arch}}"
+                - name: nodepool
+                  value: "{{inputs.parameters.nodepool}}"
+                - name: repository
+                  value: "{{workflow.parameters.repository}}-{{inputs.parameters.arch}}"
+                - name: custom-script-path
+                  value: ci/custom-script-test.sh
+
+    - name: build-arm64
+      steps:
+        - - name: build-arm64-1
+            template: build
+            arguments:
+              parameters:
+                - name: arch
+                  value: arm64
+                - name: nodepool
+                  value: ciarm
+
+    - name: build-amd64
+      steps:
+        - - name: build-amd64-1
+            template: build
+            arguments:
+              parameters:
+                - name: arch
+                  value: amd64
+                - name: nodepool
+                  value: cix86
+          # test only amd64 because amd64 build is faster than arm64 which need to build solc
+        - - name: test-amd64
+            template: test
+            arguments:
+              parameters:
+                - name: arch
+                  value: amd64
+                - name: nodepool
+                  value: cix86
+
+    # push template use /working dir. so we need to gather each tar file to /working.
+    - name: gather
+      script:
+        image: ubuntu:24.04
+        volumeMounts:
+          - name: working
+            mountPath: /working
+          - name: working-arm64
+            mountPath: /working-arm64
+          - name: working-amd64
+            mountPath: /working-amd64
+        command: [ 'bash', '-eux' ]
+        source: |
+          date
+          ls -l /working-*/*.tar
+          time cp /working-*/*.tar /working/
+
+    - name: push
+      steps:
+        - - name: push-arm64
+            templateRef:
+              clusterScope: true
+              name: image
+              template: push-to-azure-acr
+            arguments:
+              parameters:
+                - name: repository
+                  value: "{{workflow.parameters.repository}}-arm64"
+          - name: push-amd64
+            templateRef:
+              clusterScope: true
+              name: image
+              template: push-to-azure-acr
+            arguments:
+              parameters:
+                - name: repository
+                  value: "{{workflow.parameters.repository}}-amd64"
+
+    - name: manifest
+      steps:
+        - - name: manifest
+            templateRef:
+              clusterScope: true
+              name: image
+              template: create-manifest-list
+            arguments:
+              parameters:
+                - name: nodepool
+                  value: cix86
+                - name: images
+                  value: |
+                    {{workflow.parameters.repository}}-amd64
+                    {{workflow.parameters.repository}}-arm64
+
+
+  volumeClaimTemplates:
+    - metadata:
+        name: working
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 30Gi
+    - metadata:
+        name: working-amd64
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+    - metadata:
+        name: working-arm64
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+  volumes:
+    - name: ci-secrets
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: ci

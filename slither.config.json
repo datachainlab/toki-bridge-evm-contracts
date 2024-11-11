@@ -1,0 +1,4 @@
+{
+    "filter_paths": "lib,test,script,node_modules,src/future/VotingEscrow.sol",
+    "exclude_informational": true
+}

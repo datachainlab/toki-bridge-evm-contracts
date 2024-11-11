@@ -1,0 +1,32 @@
+{
+  "chain": {
+    "@type": "/relayer.chains.ethereum.config.ChainConfig",
+    "chain_id": "ibc1",
+    "eth_chain_id": 1337,
+    "rpc_addr": "http://host:18545",
+    "signer": {
+        "@type": "/relayer.signers.hd.SignerConfig",
+        "mnemonic": "math razor capable expose worth grape metal sunset metal sudden usage scheme",
+        "path": "m/44'/60'/0'/0/0"
+    },
+    "ibc_address": "${IBC_ADDR}",
+    "initial_send_checkpoint": 0,
+    "initial_recv_checkpoint": 0,
+    "enable_debug_trace": true,
+    "average_block_time_msec": 6000,
+    "max_retry_for_inclusion": 5,
+    "gas_estimate_rate": {
+      "numerator": 3,
+      "denominator": 2
+    },
+    "max_gas_limit": 2000000,
+    "allow_lc_functions": null,
+    "tx_type": "auto",
+    "blocks_per_event_query": 1000,
+    "abi_paths": ["/abi"]
+  },
+  "prover": {
+    "@type": "/relayer.provers.mock.config.ProverConfig",
+    "finality_delay": 3
+  }
+}

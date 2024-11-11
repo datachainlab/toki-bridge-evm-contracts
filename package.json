@@ -1,0 +1,64 @@
+{
+  "name": "toki-bridge-evm-contracts",
+  "version": "1.0.0",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.6",
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-ignition": "^0.15.0",
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.5",
+    "@openzeppelin/hardhat-upgrades": "^3.0.5",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "@types/chai": "^4.2.0",
+    "@types/mocha": ">=9.1.0",
+    "chai": "4",
+    "chartscii": "^1.3.2",
+    "ethers": "^6.12.1",
+    "hardhat": "^2.22.1",
+    "hardhat-contract-sizer": "^2.10.0",
+    "hardhat-gas-reporter": "^1.0.10",
+    "husky": "^9.0.11",
+    "lint-staged": "^13.2.0",
+    "prettier": "^2.8.7",
+    "prettier-plugin-solidity": "^1.1.3",
+    "solhint": "^3.6.2",
+    "solidity-coverage": "^0.8.11",
+    "ts-node": "^10.9.1",
+    "typechain": "^8.3.2",
+    "typescript": "^5.1.3"
+  },
+  "scripts": {
+    "build": "forge build --skip test --sizes",
+    "build:hardhat": "hardhat compile",
+    "build:hardhat:typechain": "hardhat typechain",
+    "size": "hardhat size-contracts",
+    "test": "forge test -vvv --gas-report",
+    "test:hardhat": "hardhat test --no-compile",
+    "prepare": "husky",
+    "format": "prettier --write src/**/*.sol test/**/*.sol",
+    "lint": "npm run lint:src && npm run lint:test",
+    "lint:src": "solhint 'src/**/*.sol'",
+    "lint:test": "solhint -c test/.solhint.json 'test/**/*.sol'",
+    "deploy": "hardhat run script/hardhat/run-deploy.ts --no-compile --network $DEPLOY_NETWORK",
+    "generate:abi": "hardhat run script//hardhat/generateABI.ts --no-compile --network hardhat",
+    "generate:error-abi": "npx ts-node script/tools/merge-custom-error-abis.ts > abi/merge_custom_errors.json",
+    "generate:error-md": "npx ts-node script/tools/error-abi-to-md.ts -a abi/merge_custom_errors.json -u script/tools/unwanted-errors.txt --sort"
+  },
+  "lint-staged": {
+    "*.sol": [
+      "prettier --write"
+    ]
+  },
+  "volta": {
+    "node": "18.14.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.1.0",
+    "@openzeppelin/contracts-upgradeable": "^5.1.0",
+    "@hyperledger-labs/yui-ibc-solidity": "git+https://github.com/hyperledger-labs/yui-ibc-solidity#semver:v0.3.38",
+    "lcp-solidity": "git+https://github.com/datachainlab/lcp-solidity#semver:v0.1.15"
+  }
+}

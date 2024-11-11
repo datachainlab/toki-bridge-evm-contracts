@@ -1,0 +1,38 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "ts-node -r tsconfig-paths/register src/main.ts all",
+    "testSendCredit": "ts-node -r tsconfig-paths/register src/main.ts sendCredit",
+    "testTransferToken": "ts-node -r tsconfig-paths/register src/main.ts transferToken",
+    "testTransferTokenFailCap": "ts-node -r tsconfig-paths/register src/main.ts transferTokenFailTokiTokenCap",
+    "testTransferPool": "ts-node -r tsconfig-paths/register src/main.ts transferPool",
+    "testWithdrawInstant": "ts-node -r tsconfig-paths/register src/main.ts withdrawInstant",
+    "testWithdrawRemote": "ts-node -r tsconfig-paths/register src/main.ts withdrawRemote",
+    "testWithdrawLocal": "ts-node -r tsconfig-paths/register src/main.ts withdrawLocal",
+    "testOuterServiceSuccess": "ts-node -r tsconfig-paths/register src/main.ts outerServiceSuccess",
+    "testOuterServiceFailGas": "ts-node -r tsconfig-paths/register src/main.ts outerServiceFailGas",
+    "testOuterServiceFailRevert": "ts-node -r tsconfig-paths/register src/main.ts outerServiceFailRevert",
+    "testOuterCallSuccess": "ts-node -r tsconfig-paths/register src/main.ts outerCallSuccess",
+    "testOuterCallFailRevert": "ts-node -r tsconfig-paths/register src/main.ts outerCallFailRevert",
+    "testOuterCallFailBridgeGas": "ts-node -r tsconfig-paths/register src/main.ts outerCallFailBridgeGas",
+    "testMulticall": "ts-node -r tsconfig-paths/register src/multicall.ts",
+    "testError": "ts-node -r tsconfig-paths/register src/error.ts",
+    "testUpgradePoolToV1": "ts-node -r tsconfig-paths/register src/upgradePool.ts v1",
+    "testUpgradePoolV1ToV2Fail": "ts-node -r tsconfig-paths/register src/upgradePool.ts v1_to_v2",
+    "deposit": "ts-node -r tsconfig-paths/register src/main.ts deposit",
+    "show": "ts-node -r tsconfig-paths/register src/main.ts show"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.7",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.2.2"
+  }
+}

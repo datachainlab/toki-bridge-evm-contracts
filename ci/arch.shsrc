@@ -1,0 +1,11 @@
+case "x$(arch)" in
+    xarch64 | xaarch64 | xarm64 )
+        echo arm64
+        ;;
+    xx86_64 )
+        echo amd64
+        ;;
+    * )
+        echo "unknown arch: $(arch)"
+        exit 1
+esac

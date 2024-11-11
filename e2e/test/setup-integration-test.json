@@ -1,0 +1,97 @@
+{
+  "chains": [ {
+    "pools": [ {
+      "liquidity": "1000000"
+    }, {
+      "liquidity": "0"
+    } ]
+  }, {
+    "pools": [ {
+      "liquidity": "1000000"
+    }, {
+      "liquidity": "1000000"
+    } ]
+  } ],
+
+  "accounts": [ {
+    "name": "A1",
+    "address": "0x42EF821c74EEE5254d6b878edcAA2f3b1A3Af47D",
+    "chains": [ {
+      "native_token": "10",
+      "pooled_token": [ "30000", "0" ]
+    }, {
+      "native_token": "10",
+      "pooled_token": [ "50000", "80000" ]
+    } ]
+  }, {
+    "name": "A2",
+    "address": "0x74ED8b56C7498866fdE9D839057beb5Bd966c4C7",
+    "chains": [ {
+      "native_token": "10",
+      "pooled_token": [ "100", "0" ]
+    }, {
+      "native_token": "10",
+      "pooled_token": [ "50", "80" ]
+    } ]
+  }, {
+    "name": "B1",
+    "address": "0x3c934bF71A1158F1eb5eE97bA83CF9EcAD2AD5D5",
+    "chains": [ {
+      "native_token": "0",
+      "pooled_token": [ "30000", "0" ]
+    }, {
+      "native_token": "0",
+      "pooled_token": [ "0", "0" ]
+    } ]
+  }, {
+    "name": "B2",
+    "address": "0xdd661653C1A4a15232916af514FC05B728E073c1",
+    "chains": [ {
+      "native_token": "0",
+      "pooled_token": [ "100", "0" ]
+    }, {
+      "native_token": "1",
+      "pooled_token": [ "50", "80" ]
+    } ]
+  }, {
+    "name": "C1",
+    "address": "0xb7053BF1019E60114becB0a01bc5Ea64d70a35aE",
+    "chains": [ {
+      "native_token": "0",
+      "pooled_token": [ "100", "0" ]
+    }, {
+      "native_token": "1",
+      "pooled_token": [ "50", "80" ]
+    } ]
+  }, {
+    "name": "C2",
+    "address": "0xa27AcC814682718763065fd8361D2122A65E840B",
+    "chains": [ {
+      "native_token": "0",
+      "pooled_token": [ "100", "0" ]
+    }, {
+      "native_token": "1",
+      "pooled_token": [ "50", "80" ]
+    } ]
+  }, {
+    "name": "D1",
+    "address": "0x47AE921DFa256D3934278EE0e2b86672beD86a62",
+    "chains": [ {
+      "native_token": "0",
+      "pooled_token": [ "0", "0" ]
+    }, {
+      "native_token": "0",
+      "pooled_token": [ "0", "0" ]
+    } ]
+  }, {
+    "name": "D2",
+    "address": "0xCc9835c3eC6f64AD8da46201DEf867FE302dbA28",
+    "chains": [ {
+      "native_token": "0",
+      "pooled_token": [ "0", "0" ]
+    }, {
+      "native_token": "0",
+      "pooled_token": [ "0", "0" ]
+    } ]
+  } ]
+}
