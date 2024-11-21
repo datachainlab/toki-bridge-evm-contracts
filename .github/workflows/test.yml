@@ -38,6 +38,7 @@ jobs:
       - name: Run Forge build
         run: |
           forge --version
+          forge config
           forge build --skip test --sizes
         id: build
 

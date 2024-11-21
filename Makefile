@@ -48,6 +48,10 @@ $(FORGE_OBJECTS): $(SOURCES)
 test:
 	forge test -vvvv
 
+.PHONY: test-ci
+test-ci:
+	FOUNDRY_PROFILE=ci forge test -vvvv
+
 .PHONY: test-hardhat
 test-hardhat:
 	npm run test:hardhat
