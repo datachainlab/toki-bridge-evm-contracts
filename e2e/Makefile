@@ -124,6 +124,7 @@ network-stop-bsc: $(TOKI_BRIDGE_LOCAL_DIR)
 	    pkill -TERM geth; \
 	    while pgrep -l geth ; do sleep 1; done; \
 	  "; \
+	  docker stop $$cid; \
 	  docker rm $$cid; \
 	done
 
