@@ -73,7 +73,7 @@
         "weight": 1000
       }
     ],
-    "maxTotalDepositsLD_BN": "500_000e+18"
+    "maxTotalDepositsLD_BN": "100_000_000e+18"
   }, {
     "deployed": {
       "bridgeAddress": "",
@@ -131,7 +131,7 @@
         "weight": 1000
       }
     ],
-    "maxTotalDepositsLD_BN": "500_000e+18"
+    "maxTotalDepositsLD_BN": "100_000_000e+18"
   }, {
     "deployed": {
       "bridgeAddress": "",
@@ -180,7 +180,7 @@
         "weight": 1000
       }
     ],
-    "maxTotalDepositsLD_BN": "150e+18"
+    "maxTotalDepositsLD_BN": "25_000e+18"
   } ],
   "channel": {
     "deployed": {

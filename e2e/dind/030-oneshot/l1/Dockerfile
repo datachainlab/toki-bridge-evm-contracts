@@ -11,6 +11,6 @@ ENV L2RELAYERDIR=${L2RELAYERDIR} L2TESTDIR=${L2TESTDIR}
 
 RUN chmod 755 /toki/init.d/030-*.sh && \
     mkdir -p ${L2TESTDIR}/e2e && \
-    chown -R 1000.1000 ${L2TESTDIR}
+    chown -R 1000:1000 ${L2TESTDIR}
 
 USER 1000

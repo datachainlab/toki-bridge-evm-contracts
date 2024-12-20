@@ -1,6 +1,5 @@
 CONTRACT_DEPLOY_CONFIG_DIR = $(CURDIR)/contract-deploy
-# use mirror.gcr.io
-TOKI_BRIDGE_LOCAL_REVISION = 1aec50e5608c58ca0936b843c1901abc1692ee40
+TOKI_BRIDGE_LOCAL_REVISION = ce9248f137aa91f516e9e043d50b42c3d01ab8e1
 TOKI_BRIDGE_LOCAL_DIR = toki-bridge-local-$(TOKI_BRIDGE_LOCAL_REVISION)
 
 .PHONY: help
@@ -125,6 +124,7 @@ network-stop-bsc: $(TOKI_BRIDGE_LOCAL_DIR)
 	    pkill -TERM geth; \
 	    while pgrep -l geth ; do sleep 1; done; \
 	  "; \
+	  docker stop $$cid; \
 	  docker rm $$cid; \
 	done
 

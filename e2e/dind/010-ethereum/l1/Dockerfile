@@ -10,6 +10,6 @@ USER root
 COPY l2/ /toki/
 
 RUN chmod 755 /toki/init.d/010-ethereum-*.sh && \
-    chown -R 1000.1000 /toki/run-ethereum
+    chown -R 1000:1000 /toki/run-ethereum
 
 USER 1000
