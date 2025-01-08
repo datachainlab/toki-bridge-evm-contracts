@@ -16,11 +16,7 @@ interface IBridgeStandardRouter {
      * @param amountLD The amount of tokens to deposit in LD units.
      * @param to The address to receive the deposited tokens.
      */
-    function deposit(
-        uint256 poolId,
-        uint256 amountLD,
-        address to
-    ) external payable;
+    function deposit(uint256 poolId, uint256 amountLD, address to) external;
 
     /**
      * @dev Transfers tokens from the source pool to the destination pool and makes a remittance request on the destination side.

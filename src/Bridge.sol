@@ -162,7 +162,7 @@ contract Bridge is
         uint256 poolId,
         uint256 amountLD,
         address to
-    ) external payable nonReentrant {
+    ) external nonReentrant {
         IPool pool = getPool(poolId);
         uint256 convertRate = pool.convertRate();
         amountLD = _roundDownToConvertRate(amountLD, convertRate);
