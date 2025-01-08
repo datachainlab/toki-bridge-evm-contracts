@@ -28,6 +28,7 @@ contract ETHVault is
     function initialize() public initializer {
         __ERC20_init("TOKI wrapped ETH", "tokiETH");
         __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
     }
 
     receive() external payable {
