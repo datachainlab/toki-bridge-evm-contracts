@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import "./interfaces/ITokiErrors.sol";
@@ -14,6 +15,7 @@ import "./interfaces/IPool.sol";
 contract PoolRepository is
     ITokiErrors,
     AccessControlUpgradeable,
+    UUPSUpgradeable,
     IPoolRepository
 {
     bytes32 public constant POOL_SETTER = keccak256("POOL_SETTER");
@@ -24,6 +26,7 @@ contract PoolRepository is
 
     function initialize() public initializer {
         __AccessControl_init();
+        __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -51,4 +54,8 @@ contract PoolRepository is
         }
         return IPool(pool);
     }
+
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }
