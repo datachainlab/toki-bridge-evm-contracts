@@ -219,7 +219,7 @@ contract TransferPoolFeeCalculator is
         if (srcPrice >= dstPrice) {
             return 0;
         }
-        return (amountGD * srcPrice) / dstPrice;
+        return (amountGD * (dstPrice - srcPrice)) / dstPrice;
     }
 
     // todo: by the time TOKI Token is released, it is necessary to be able to pass USD/ETH pair into TransferPoolFeeCalculator in e2e if there are multiple instances.

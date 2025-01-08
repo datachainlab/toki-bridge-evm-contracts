@@ -402,7 +402,7 @@ contract TransferPoolFeeCalculatorTest is Test {
             1,
             2,
             1_000_000 * (10 ** globalDecimals),
-            900 * (10 ** globalDecimals) + 818181818181818181818181 // 819081.818181818181818181
+            900 * (10 ** globalDecimals) + 181818181818181818181818
         );
     }
 
@@ -595,7 +595,7 @@ contract TransferPoolFeeCalculatorTest is Test {
             1,
             2,
             10000,
-            8181
+            1818 // (10000 * (11 - 9)) / 11
         );
         _testGetDriftProtocolFee(
             "testGetDriftProtocolFee-40: drift status, src pool price > dst pool price",
@@ -779,10 +779,10 @@ contract TransferPoolFeeCalculatorTest is Test {
             100e18,
             ITransferPoolFeeCalculator.FeeInfo(
                 100e18 -
-                    (87000000000000000 + 81818181818181818181) -
+                    (87000000000000000 + 18181818181818181818) -
                     3400000000000000 -
                     0,
-                87000000000000000 + 81818181818181818181,
+                87000000000000000 + 18181818181818181818,
                 3400000000000000,
                 0,
                 70000000000000000,
