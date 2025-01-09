@@ -2131,6 +2131,31 @@ contract PoolTest is PoolTestDecimals, Test {
         p.getPeerPoolInfo(chainIds[k], poolIds[k]);
     }
 
+    function testLimitPeerPool() public {
+        uint256 weight = 1;
+
+        Pool pool = _getPool(poolIds[0], chainIds[0]);
+        vm.chainId(0);
+        vm.startPrank(admin);
+
+        // register peer pool up to the limit
+        uint256 max = pool.MAX_PEERS();
+        for (uint256 i = 0; i < max; i++) {
+            pool.registerPeerPool(i, i, weight);
+        }
+
+        // failed in registering over limit
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "PeerPool",
+                max + 1,
+                max
+            )
+        );
+        pool.registerPeerPool(max, max, weight);
+    }
+
     // ====================== helper functions =============================
     function setupCredited(uint256 amountLd) public {
         setupMinted(amountLd);

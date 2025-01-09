@@ -67,6 +67,11 @@ contract Pool is
         uint256 _maxTotalDeposits; // The maximum deposits that each pool will hold by LD-unit
     }
 
+    // The maximum number of peer pool.
+    // This limitation prevents _deltaSourceUpdate from exceeding the block gas limit.
+    // The amount of gas for _deltaSourceUpdate increases by about 20k as peer increases.
+    uint256 public constant MAX_PEERS = 100;
+
     // keccak256(abi.encode(uint256(keccak256("toki.storage.Pool")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant POOL_LOCATION =
         0x98b6721f87b10fba9510649effb5cccfd7d04ba1bf6c44593ef8229732a7ea00;
@@ -159,6 +164,9 @@ contract Pool is
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         PoolStorage storage $ = _getPoolStorage();
         uint256 length = $._peerPoolInfos.length;
+        if (MAX_PEERS <= length) {
+            revert TokiExceed("PeerPool", length + 1, MAX_PEERS);
+        }
         for (uint256 i = 0; i < length; ++i) {
             PeerPoolInfo memory peerPoolInfo = $._peerPoolInfos[i];
             bool exists = peerPoolInfo.chainId == peerChainId &&
