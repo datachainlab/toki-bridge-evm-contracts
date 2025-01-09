@@ -43,8 +43,6 @@ contract BridgeFallback is
 
     receive() external payable {}
 
-    fallback() external payable {}
-
     function callDelta(uint256 srcPoolId, bool fullMode) external {
         if (fullMode) {
             _checkRole(DEFAULT_ADMIN_ROLE);
