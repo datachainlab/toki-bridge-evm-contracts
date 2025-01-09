@@ -25,11 +25,16 @@ contract MockUSD is MockToken {
     ) MockToken("MockToken", "MOCK", decimals, initialSupply) {}
 }
 
-contract MockTransferPoolFeeCalculatorWithEqFee is ITransferPoolFeeCalculator {
+contract MockTransferPoolFeeCalculatorWithFee is ITransferPoolFeeCalculator {
     uint256 public eqFeeBps;
+    uint256 public lpFeeBps;
 
     function setEqFeeBps(uint256 _eqFeeBps) external {
         eqFeeBps = _eqFeeBps;
+    }
+
+    function setLpFeeBps(uint256 _lpFeeBps) external {
+        lpFeeBps = _lpFeeBps;
     }
 
     function calcFee(
@@ -40,10 +45,11 @@ contract MockTransferPoolFeeCalculatorWithEqFee is ITransferPoolFeeCalculator {
     ) external view returns (FeeInfo memory) {
         return
             FeeInfo({
+                // this mock always returns the input amountGD, which is different from the actual fee calculation
                 amountGD: amountGD,
                 // extremely high setting, however this should not affect slippage
                 protocolFee: amountGD / 2,
-                lpFee: amountGD / 10000,
+                lpFee: (amountGD * lpFeeBps) / 10000,
                 eqFee: (amountGD * eqFeeBps) / 10000,
                 eqReward: 0,
                 lastKnownBalance: 0
@@ -55,7 +61,7 @@ contract MockTransferPoolFeeCalculatorWithEqFee is ITransferPoolFeeCalculator {
     }
 }
 
-contract PoolTestAboutEqFee is PoolTestDecimals, Test {
+contract PoolTestWithFeeCommon is PoolTestDecimals, Test {
     // assign address
     address public alice = address(0x01);
     address public admin = address(0x10);
@@ -63,7 +69,7 @@ contract PoolTestAboutEqFee is PoolTestDecimals, Test {
     Pool public pool;
     MockUSD public token;
     ERC1967Proxy public proxy;
-    MockTransferPoolFeeCalculatorWithEqFee public feeCalculator;
+    MockTransferPoolFeeCalculatorWithFee public feeCalculator;
 
     uint256 public constant CHAIN_ID = 1;
     uint256 public constant PEER_CHAIN_ID = 2;
@@ -71,14 +77,14 @@ contract PoolTestAboutEqFee is PoolTestDecimals, Test {
     uint256 public constant PEER_POOL_ID = 1;
     uint256 public constant MAX_SLIPPAGE_BPS = 120; // 1.2%
 
-    function setUp() public {
+    function setUpCommon() public {
         setUpDecimals(18, 6);
         vm.chainId(CHAIN_ID);
         pool = new Pool(100, 200, 100_000_000_000, 100_000_000);
         token = new MockUSD(6, 1_000_000);
 
         // calcFee() always returns with eq fee
-        feeCalculator = new MockTransferPoolFeeCalculatorWithEqFee();
+        feeCalculator = new MockTransferPoolFeeCalculatorWithFee();
 
         pool.initialize(
             Pool.InitializeParam(
@@ -100,6 +106,19 @@ contract PoolTestAboutEqFee is PoolTestDecimals, Test {
         // for transfer()
         pool.grantRole(pool.DEFAULT_ROUTER_ROLE(), address(this));
         vm.stopPrank();
+    }
+
+    function _calcMinAmountLD(
+        uint256 amount,
+        uint256 slippageBps
+    ) internal pure returns (uint256) {
+        return (amount * (10000 - slippageBps)) / 10000;
+    }
+}
+
+contract PoolTestAboutEqFee is PoolTestWithFeeCommon {
+    function setUp() public {
+        setUpCommon();
 
         // update peerPoolInfo
         IPool.CreditInfo memory creditInfo = IPool.CreditInfo({
@@ -185,11 +204,64 @@ contract PoolTestAboutEqFee is PoolTestDecimals, Test {
             true
         );
     }
+}
 
-    function _calcMinAmountLD(
-        uint256 amount,
-        uint256 slippageBps
-    ) internal pure returns (uint256) {
-        return (amount * (10000 - slippageBps)) / 10000;
+contract PoolTestAboutLastKnownBalance is PoolTestWithFeeCommon {
+    function setUp() public {
+        setUpCommon();
+
+        // update peerPoolInfo
+        IPool.CreditInfo memory creditInfo = IPool.CreditInfo({
+            credits: 100 * (10 ** globalDecimals),
+            targetBalance: 1000 * (10 ** globalDecimals)
+        });
+        pool.updateCredit(PEER_CHAIN_ID, PEER_POOL_ID, creditInfo);
+    }
+
+    function testTransferRevertsWhenLastKnownBalanceIsGreaterThanBalance()
+        public
+    {
+        uint256 lpFeeBps = 100; // 1%
+        feeCalculator.setLpFeeBps(lpFeeBps);
+        uint256 amountLD = 1000 * (10 ** localDecimals);
+        uint256 minAmountLD = _calcMinAmountLD(amountLD, MAX_SLIPPAGE_BPS);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiInsufficientPoolLiquidity.selector,
+                100 * (10 ** globalDecimals), // credits were added by updateCredit()
+                LDToGD((amountLD * (10000 - lpFeeBps)) / 10000)
+            )
+        );
+        pool.transfer(
+            PEER_CHAIN_ID,
+            PEER_POOL_ID,
+            alice,
+            amountLD,
+            minAmountLD,
+            true
+        );
+    }
+
+    function testTransferPassWithEnoughBalance() public {
+        uint256 lpFeeBps = 100; // 1%
+        feeCalculator.setLpFeeBps(lpFeeBps);
+        uint256 amountLD = 50 * (10 ** localDecimals);
+        uint256 minAmountLD = _calcMinAmountLD(amountLD, MAX_SLIPPAGE_BPS);
+
+        ITransferPoolFeeCalculator.FeeInfo memory feeInfo = pool.transfer(
+            PEER_CHAIN_ID,
+            PEER_POOL_ID,
+            alice,
+            amountLD,
+            minAmountLD,
+            true
+        );
+
+        // pool updates feeInfo.lastKnownBalance though calcFee() returns 0 for lastKnownBalance
+        assertEq(
+            feeInfo.lastKnownBalance,
+            LDToGD((amountLD * (10000 - lpFeeBps)) / 10000)
+        );
     }
 }

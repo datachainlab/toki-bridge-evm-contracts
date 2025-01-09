@@ -395,10 +395,10 @@ contract Pool is
         feeInfo.lastKnownBalance = amountGD - feeInfo.lpFee + feeInfo.eqReward;
 
         // delta algorithm 1-5 lines
-        if (peerPoolInfo.balance < amountGD) {
+        if (peerPoolInfo.balance < feeInfo.lastKnownBalance) {
             revert TokiInsufficientPoolLiquidity(
                 peerPoolInfo.balance,
-                amountGD
+                feeInfo.lastKnownBalance
             );
         }
         peerPoolInfo.balance = peerPoolInfo.balance - feeInfo.lastKnownBalance;
