@@ -162,6 +162,48 @@ contract RecoveredLCPClientUpgradeableTest is Test {
         t.upgradeToAndCall(newImpl, callData);
     }
 
+    function testUpgradeWhenSenderIsOwner() public {
+        MockIBCClient newIBCClient = new MockIBCClient();
+        address newImpl = address(
+            new RecoveredLCPClientUpgradeable(address(newIBCClient), true, 2)
+        );
+
+        vm.expectEmit(address(t));
+        emit IERC1967.Upgraded(newImpl);
+        t.upgradeToAndCall(newImpl, "");
+
+        RecoveredLCPClientUpgradeable client = RecoveredLCPClientUpgradeable(
+            address(t)
+        );
+
+        client.upgrade(newClientState, newConsensusState);
+    }
+
+    function testUpgradeCallRevertsWhenSenderIsNotOwner() public {
+        MockIBCClient newIBCClient = new MockIBCClient();
+        address newImpl = address(
+            new RecoveredLCPClientUpgradeable(address(newIBCClient), true, 2)
+        );
+
+        vm.expectEmit(address(t));
+        emit IERC1967.Upgraded(newImpl);
+        t.upgradeToAndCall(newImpl, "");
+
+        RecoveredLCPClientUpgradeable client = RecoveredLCPClientUpgradeable(
+            address(t)
+        );
+
+        address notOwner = makeAddr("NotOwner");
+        vm.prank(notOwner);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                OwnableUpgradeable.OwnableUnauthorizedAccount.selector,
+                notOwner
+            )
+        );
+        client.upgrade(newClientState, newConsensusState);
+    }
+
     function testUpgradeToAndCallRevertsWhenContractHasAlreadyUpgraded()
         public
     {

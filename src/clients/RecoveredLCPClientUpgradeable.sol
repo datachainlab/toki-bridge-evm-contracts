@@ -43,7 +43,7 @@ contract RecoveredLCPClientUpgradeable is LCPClientUpgradeable {
     function upgrade(
         NewClientState memory newClientState,
         NewConsensusState memory newConsensusState
-    ) external reinitializer(RECOVERED_VERSION) {
+    ) external reinitializer(RECOVERED_VERSION) onlyOwner {
         ClientStorage storage clientStorage = clientStorages[
             newClientState.clientId
         ];
