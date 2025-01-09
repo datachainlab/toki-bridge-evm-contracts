@@ -127,6 +127,29 @@ contract ETHVaultTest is Test {
         ethVault.setNoUnwrapTo(alice);
     }
 
+    function testResetNoUnwrapTo() public {
+        vm.expectEmit(true, false, false, true);
+        emit ETHVault.SetNoUnwrapTo(alice);
+        ethVault.setNoUnwrapTo(alice);
+        assertEq(ethVault.noUnwrapTo(alice), true);
+
+        vm.expectEmit(true, false, false, true);
+        emit ETHVault.ResetNoUnwrapTo(alice);
+        ethVault.resetNoUnwrapTo(alice);
+        assertEq(ethVault.noUnwrapTo(alice), false);
+    }
+
+    function testResetNoUnwrapToRevertsWhenSenderIsNotOwner() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                OwnableUpgradeable.OwnableUnauthorizedAccount.selector,
+                alice
+            )
+        );
+        vm.prank(alice);
+        ethVault.resetNoUnwrapTo(alice);
+    }
+
     function testTransfer() public {
         vm.deal(alice, 1 wei);
         vm.prank(alice);

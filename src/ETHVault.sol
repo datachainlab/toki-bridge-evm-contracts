@@ -24,6 +24,7 @@ contract ETHVault is
 
     /* ========== EVENTS ========== */
     event SetNoUnwrapTo(address addr);
+    event ResetNoUnwrapTo(address addr);
 
     function initialize() public initializer {
         __ERC20_init("TOKI wrapped ETH", "tokiETH");
@@ -44,6 +45,11 @@ contract ETHVault is
     function setNoUnwrapTo(address addr) external onlyOwner {
         _getETHVaultStorage()._noUnwrapTo[addr] = true;
         emit SetNoUnwrapTo(addr);
+    }
+
+    function resetNoUnwrapTo(address addr) external onlyOwner {
+        _getETHVaultStorage()._noUnwrapTo[addr] = false;
+        emit ResetNoUnwrapTo(addr);
     }
 
     function deposit() public payable {
