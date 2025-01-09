@@ -115,10 +115,10 @@ contract PoolTest is PoolTestDecimals, Test {
         }
         // set oracle address
         {
-            tokenPriceFeed = new MockPriceFeed(10000);
+            tokenPriceFeed = new MockPriceFeed(10000, 8);
             tokenPriceOracle = new TokenPriceOracle(10 * 1e14);
 
-            MockPriceFeed expensiveTokenPriceFeed = new MockPriceFeed(1e12);
+            MockPriceFeed expensiveTokenPriceFeed = new MockPriceFeed(1e12, 8);
             tokenPriceOracle.setPriceFeedAddress(
                 DUMMY_TOKENID_OF_POOL,
                 address(expensiveTokenPriceFeed)
@@ -126,7 +126,7 @@ contract PoolTest is PoolTestDecimals, Test {
         }
         // set stable oracle address
         {
-            stablePriceFeed = new MockPriceFeed(10000);
+            stablePriceFeed = new MockPriceFeed(10000, 8);
             stableTokenPriceOracle = new StableTokenPriceOracle();
         }
 

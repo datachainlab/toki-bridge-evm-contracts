@@ -6,11 +6,17 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PseudoPriceFeed is IChainlinkPriceFeed, Ownable {
     int256 public price;
+    uint8 public immutable DECIMALS;
 
     event PriceChanged(int256 newPrice);
 
-    constructor(int256 price_) Ownable(msg.sender) {
+    constructor(int256 price_, uint8 decimals_) Ownable(msg.sender) {
         price = price_;
+        DECIMALS = decimals_;
+    }
+
+    function decimals() external view override returns (uint8) {
+        return DECIMALS;
     }
 
     function latestRoundData()

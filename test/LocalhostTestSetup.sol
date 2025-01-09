@@ -133,8 +133,8 @@ contract LocalhostTestSetup is LocalhostTest {
             // setup TokenPriceOracle
             {
                 t.price.tokenPriceOracle = new TokenPriceOracle(10 * 1e14);
-                t.price.srcPriceFeed = new MockPriceFeed(100_000);
-                t.price.dstPriceFeed = new MockPriceFeed(200_000);
+                t.price.srcPriceFeed = new MockPriceFeed(100_000, 8);
+                t.price.dstPriceFeed = new MockPriceFeed(200_000, 8);
                 t.price.tokenPriceOracle.setPriceFeedAddress(
                     chainDefs[0].chainId,
                     address(t.price.srcPriceFeed)
@@ -321,7 +321,7 @@ contract LocalhostTestSetup is LocalhostTest {
                     13,
                     1_000_000_000_000 * 1e18
                 );
-                p.priceFeed = new MockPriceFeed(1_000_000);
+                p.priceFeed = new MockPriceFeed(1_000_000, 8);
                 _chains[i]
                     .price
                     .stableTokenPriceOracle

@@ -37,13 +37,13 @@ contract RelayerFeeCalculatorTest is Test {
         {
             tokenPriceOracle = new TokenPriceOracle(10 * 1e14);
 
-            srcTokenPriceFeed = new MockPriceFeed(SRC_TOKEN_PRICE);
+            srcTokenPriceFeed = new MockPriceFeed(SRC_TOKEN_PRICE, 8);
             tokenPriceOracle.setPriceFeedAddress(
                 SRC_CHAIN_ID,
                 address(srcTokenPriceFeed)
             );
 
-            dstTokenPriceFeed = new MockPriceFeed(DST_TOKEN_PRICE);
+            dstTokenPriceFeed = new MockPriceFeed(DST_TOKEN_PRICE, 8);
             tokenPriceOracle.setPriceFeedAddress(
                 DST_CHAIN_ID,
                 address(dstTokenPriceFeed)
@@ -228,6 +228,74 @@ contract RelayerFeeCalculatorTest is Test {
                 .fee,
             0,
             "calcFee(TransferToken(srcChain))"
+        );
+    }
+
+    function testCalcFeeDecimalsSrcLtDst() public {
+        uint256 _srcChainId = SRC_CHAIN_ID + 10000;
+        uint256 _dstChainId = DST_CHAIN_ID + 10000;
+        vm.chainId(_srcChainId);
+
+        gasPriceOracle.updatePrice(_srcChainId, SRC_GAS_PRICE);
+        gasPriceOracle.updatePrice(_dstChainId, DST_GAS_PRICE);
+
+        // actual price value is SRC_TOKEN_PRICE * 10^-6 and DST_TOKEN_PRICE * 10^-8
+        // so fee is /100 divided in src currency
+        MockPriceFeed _srcFeed = new MockPriceFeed(SRC_TOKEN_PRICE, 6);
+        MockPriceFeed _dstFeed = new MockPriceFeed(DST_TOKEN_PRICE, 8);
+
+        tokenPriceOracle.setPriceFeedAddress(_srcChainId, address(_srcFeed));
+        tokenPriceOracle.setPriceFeedAddress(_dstChainId, address(_dstFeed));
+
+        assertEq(
+            relayerFeeCalculator
+                .calcFee(MessageType._TYPE_TRANSFER_POOL, _dstChainId)
+                .fee,
+            2664_000_000 / 100,
+            "calcFee(TransferPool) 6-8"
+        );
+
+        // withdraw local adds gas fee in src chain.
+        assertEq(
+            relayerFeeCalculator
+                .calcFee(MessageType._TYPE_WITHDRAW, _dstChainId)
+                .fee,
+            (2664_000_000 / 100) + 1200_000_000,
+            "calcFee(WithdrawLocal) 6-8"
+        );
+    }
+
+    function testCalcFeeDecimalsSrcGtDst() public {
+        uint256 _srcChainId = SRC_CHAIN_ID + 10000;
+        uint256 _dstChainId = DST_CHAIN_ID + 10000;
+        vm.chainId(_srcChainId);
+
+        gasPriceOracle.updatePrice(_srcChainId, SRC_GAS_PRICE);
+        gasPriceOracle.updatePrice(_dstChainId, DST_GAS_PRICE);
+
+        // actual price value is SRC_TOKE_PRICE * 10^-8 and DST_TOKEN_PRICE * 10^-6
+        // so fee is *100 multiplied in src currency
+        MockPriceFeed _srcFeed = new MockPriceFeed(SRC_TOKEN_PRICE, 8);
+        MockPriceFeed _dstFeed = new MockPriceFeed(DST_TOKEN_PRICE, 6);
+
+        tokenPriceOracle.setPriceFeedAddress(_srcChainId, address(_srcFeed));
+
+        tokenPriceOracle.setPriceFeedAddress(_dstChainId, address(_dstFeed));
+
+        assertEq(
+            relayerFeeCalculator
+                .calcFee(MessageType._TYPE_TRANSFER_POOL, _dstChainId)
+                .fee,
+            2664_000_000 * 100,
+            "calcFee(TransferPool) 8-6"
+        );
+
+        assertEq(
+            relayerFeeCalculator
+                .calcFee(MessageType._TYPE_WITHDRAW, _dstChainId)
+                .fee,
+            (2664_000_000 * 100) + 1200_000_000,
+            "calcFee(WithdrawLocal) 8-6"
         );
     }
 }

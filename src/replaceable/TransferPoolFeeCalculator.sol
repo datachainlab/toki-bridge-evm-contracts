@@ -214,8 +214,18 @@ contract TransferPoolFeeCalculator is
         if (srcStatus == IStableTokenPriceOracle.PriceDeviationStatus.Normal) {
             return 0;
         }
-        uint256 srcPrice = stableTokenPriceOracle.getCurrentPrice(srcPoolId);
-        uint256 dstPrice = stableTokenPriceOracle.getCurrentPrice(dstPoolId);
+        (uint256 srcPrice, uint8 srcDecimals) = stableTokenPriceOracle
+            .getCurrentPriceAndDecimals(srcPoolId);
+        (uint256 dstPrice, uint8 dstDecimals) = stableTokenPriceOracle
+            .getCurrentPriceAndDecimals(dstPoolId);
+
+        // Make each price is under same decimals.
+        if (srcDecimals < dstDecimals) {
+            srcPrice = srcPrice * (10 ** (dstDecimals - srcDecimals));
+        } else {
+            dstPrice = dstPrice * (10 ** (srcDecimals - dstDecimals));
+        }
+
         if (srcPrice >= dstPrice) {
             return 0;
         }

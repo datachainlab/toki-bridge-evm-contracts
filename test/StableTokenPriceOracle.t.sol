@@ -45,7 +45,7 @@ contract StableTokenPriceOracleTest is Test, StableTokenPriceOracleEvents {
     address public empty = address(0x00);
 
     function setUp() public {
-        priceFeed = new MockPriceFeed(10000);
+        priceFeed = new MockPriceFeed(10000, 8);
         stableTokenPriceOracle = new StableTokenPriceOracleHarness();
 
         vm.expectEmit(true, true, true, true);
@@ -128,6 +128,32 @@ contract StableTokenPriceOracleTest is Test, StableTokenPriceOracleEvents {
             0,
             address(priceFeed)
         );
+    }
+
+    function testSetPriceFeedDecimals() public {
+        MockPriceFeed priceFeed0 = new MockPriceFeed(10000, 0);
+        MockPriceFeed priceFeed8 = new MockPriceFeed(10000, 8);
+        MockPriceFeed priceFeed18 = new MockPriceFeed(10000, 18);
+
+        stableTokenPriceOracle.setBasePriceAndFeedAddress(
+            0,
+            1,
+            address(priceFeed0)
+        );
+        stableTokenPriceOracle.setBasePriceAndFeedAddress(
+            8,
+            1,
+            address(priceFeed8)
+        );
+        stableTokenPriceOracle.setBasePriceAndFeedAddress(
+            18,
+            1,
+            address(priceFeed18)
+        );
+
+        assertEq(stableTokenPriceOracle.getPriceFeedDecimals(0), 0, "dec 0");
+        assertEq(stableTokenPriceOracle.getPriceFeedDecimals(8), 8, "dec 8");
+        assertEq(stableTokenPriceOracle.getPriceFeedDecimals(18), 18, "dec 18");
     }
 
     function testSetPriceDriftThreshold() public {

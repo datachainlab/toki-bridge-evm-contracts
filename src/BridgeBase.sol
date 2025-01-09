@@ -90,7 +90,9 @@ abstract contract BridgeBase is BridgeStore {
                 dstOuterGas,
                 dstRefuelAmount,
                 relayerFee.srcTokenPrice,
+                relayerFee.srcTokenDecimals,
                 relayerFee.dstTokenPrice,
+                relayerFee.dstTokenDecimals,
                 relayerFee.dstGasPrice,
                 riskBPS
             );
@@ -426,18 +428,29 @@ abstract contract BridgeBase is BridgeStore {
         uint256 dstGas, // [gas]
         uint256 dstTokenAmount, // [dst wei]
         uint256 srcTokenPrice,
+        uint256 srcTokenDecimals,
         uint256 dstTokenPrice,
+        uint256 dstTokenDecimals,
         uint256 dstGasPrice,
         uint256 riskBPS
     ) internal pure returns (uint256) {
         if (srcTokenPrice == 0) {
             revert TokiZeroValue("srcTokenPrice");
         }
+        (
+            uint256 decimalRatioNumerator,
+            uint256 decimalRatioDenominator
+        ) = (dstTokenDecimals < srcTokenDecimals)
+                ? (10 ** (srcTokenDecimals - dstTokenDecimals), uint256(1))
+                : (uint256(1), 10 ** (dstTokenDecimals - srcTokenDecimals));
+
         // srcWei = dstWei[dstWei] * dstPrice[usd/dstWei] / srcPrice[usd/srcWei]* riskPremium[bps]
         uint256 dstWei = dstGas * dstGasPrice + dstTokenAmount;
         return
-            (dstWei * dstTokenPrice * (RISK_BPS + riskBPS)) /
-            srcTokenPrice /
-            RISK_BPS;
+            (dstWei *
+                dstTokenPrice *
+                decimalRatioNumerator *
+                (RISK_BPS + riskBPS)) /
+            (srcTokenPrice * decimalRatioDenominator * RISK_BPS);
     }
 }

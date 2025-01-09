@@ -11,10 +11,12 @@ contract BridgeQuerier is BridgeBase, IBridgeQuerier {
         uint256 dstNativeAmount
     ) external view returns (uint256) {
         BridgeStorage storage $ = getBridgeStorage();
-        uint256 srcTokenPrice = $.tokenPriceOracle.getLatestPrice(
-            block.chainid
-        );
-        uint256 dstTokenPrice = $.tokenPriceOracle.getLatestPrice(dstChainId);
+        (uint256 srcTokenPrice, uint8 srcTokenDecimals) = $
+            .tokenPriceOracle
+            .getLatestPriceAndDecimals(block.chainid);
+        (uint256 dstTokenPrice, uint8 dstTokenDecimals) = $
+            .tokenPriceOracle
+            .getLatestPriceAndDecimals(dstChainId);
         uint256 dstGasPrice = $.relayerFeeCalculator.getGasPrice(dstChainId);
         uint256 riskBPS = $.premiumBPS[dstChainId];
 
@@ -23,7 +25,9 @@ contract BridgeQuerier is BridgeBase, IBridgeQuerier {
                 dstGas,
                 dstNativeAmount,
                 srcTokenPrice,
+                srcTokenDecimals,
                 dstTokenPrice,
+                dstTokenDecimals,
                 dstGasPrice,
                 riskBPS
             );

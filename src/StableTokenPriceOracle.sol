@@ -14,6 +14,11 @@ contract StableTokenPriceOracle is
 {
     using Math for uint256;
 
+    struct PriceFeedInfo {
+        address priceFeedAddress;
+        uint8 priceFeedDecimals;
+    }
+
     uint256 public constant DENOMINATOR = 1e18;
     uint256 public constant ONE_BPS = 1e14;
     uint256 public constant ONE_BPS_PRICE_CHANGE_THRESHOLD = 1 * ONE_BPS;
@@ -21,7 +26,7 @@ contract StableTokenPriceOracle is
 
     mapping(uint256 => uint256) private _poolIdToCurrentPrice;
     mapping(uint256 => uint256) private _poolIdToBasePrice;
-    mapping(uint256 => address) private _poolIdToPriceFeedAddress;
+    mapping(uint256 => PriceFeedInfo) private _poolIdToPriceFeedInfo;
     uint256 public priceDriftThreshold = 10 * ONE_BPS;
     uint256 public priceDepegThreshold = 150 * ONE_BPS;
 
@@ -56,8 +61,14 @@ contract StableTokenPriceOracle is
         if (priceFeedAddress == address(0)) {
             revert TokiZeroAddress("priceFeedAddress");
         }
+        IChainlinkPriceFeed priceFeed = IChainlinkPriceFeed(priceFeedAddress);
+        uint8 decimals = priceFeed.decimals();
+
         _poolIdToBasePrice[poolId] = basePrice;
-        _poolIdToPriceFeedAddress[poolId] = priceFeedAddress;
+        _poolIdToPriceFeedInfo[poolId] = PriceFeedInfo(
+            priceFeedAddress,
+            decimals
+        );
         emit PoolStateUpdated(poolId, basePrice, priceFeedAddress);
         updateCurrentPrice(poolId, false);
     }
@@ -104,11 +115,26 @@ contract StableTokenPriceOracle is
     }
 
     function getPriceFeedAddress(uint256 poolId) public view returns (address) {
-        address priceFeedAddress = _poolIdToPriceFeedAddress[poolId];
-        if (priceFeedAddress == address(0)) {
+        PriceFeedInfo memory info = _poolIdToPriceFeedInfo[poolId];
+        if (info.priceFeedAddress == address(0)) {
             revert TokiZeroAddress("priceFeedAddress");
         }
-        return priceFeedAddress;
+        return info.priceFeedAddress;
+    }
+
+    function getPriceFeedDecimals(uint256 poolId) public view returns (uint8) {
+        PriceFeedInfo memory info = _poolIdToPriceFeedInfo[poolId];
+        if (info.priceFeedAddress == address(0)) {
+            revert TokiZeroAddress("priceFeedAddress");
+        }
+        return info.priceFeedDecimals;
+    }
+
+    function getCurrentPriceAndDecimals(
+        uint256 poolId
+    ) public view returns (uint256 price, uint8 decimals) {
+        price = _poolIdToCurrentPrice[poolId];
+        decimals = getPriceFeedDecimals(poolId);
     }
 
     function _priceNeedsUpdate(

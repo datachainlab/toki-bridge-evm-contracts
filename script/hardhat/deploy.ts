@@ -584,6 +584,7 @@ export type UsePriceFeedParameters = {
 }
 export type DeployPseudoPriceFeedParameters = {
   initialPseudoPrice_BN: bigint,
+  decimals: number,
 }
 
 export type DeployPriceFeedParameters = UsePriceFeedParameters | DeployPseudoPriceFeedParameters
@@ -598,7 +599,7 @@ export async function deployPriceFeed(deployer: Deployer, p: DeployPriceFeedPara
     console.log(`deployPriceFeed is skipped: address ${p.address} is given.`);
     return p.address;
   } else {
-    const feed = await deployer.deploy<PseudoPriceFeed>("PseudoPriceFeed", [p.initialPseudoPrice_BN], altname);
+    const feed = await deployer.deploy<PseudoPriceFeed>("PseudoPriceFeed", [p.initialPseudoPrice_BN, p.decimals], altname);
     return await feed.getAddress();
   }
 }

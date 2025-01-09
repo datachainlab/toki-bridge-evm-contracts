@@ -11,7 +11,7 @@ contract TokenPriceOracleTest is Test {
     address public empty = address(0x00);
 
     function setUp() public {
-        priceFeed = new MockPriceFeed(10000);
+        priceFeed = new MockPriceFeed(10000, 8);
         tokenPriceOracle = new TokenPriceOracle(10 * 1e14);
         tokenPriceOracle.setPriceFeedAddress(0, address(priceFeed));
     }
@@ -47,6 +47,20 @@ contract TokenPriceOracleTest is Test {
         emit TokenPriceOracle.SetPriceFeedAddress(1, address(priceFeed));
         tokenPriceOracle.setPriceFeedAddress(1, address(priceFeed));
         assertEq(tokenPriceOracle.getPriceFeedAddress(1), address(priceFeed));
+    }
+
+    function testPriceFeedDecimals() public {
+        MockPriceFeed priceFeed0 = new MockPriceFeed(10000, 0);
+        MockPriceFeed priceFeed8 = new MockPriceFeed(10000, 8);
+        MockPriceFeed priceFeed18 = new MockPriceFeed(10000, 18);
+
+        tokenPriceOracle.setPriceFeedAddress(0, address(priceFeed0));
+        tokenPriceOracle.setPriceFeedAddress(8, address(priceFeed8));
+        tokenPriceOracle.setPriceFeedAddress(18, address(priceFeed18));
+
+        assertEq(tokenPriceOracle.getPriceFeedDecimals(0), 0, "dec 0");
+        assertEq(tokenPriceOracle.getPriceFeedDecimals(8), 8, "dec 8");
+        assertEq(tokenPriceOracle.getPriceFeedDecimals(18), 18, "dec 18");
     }
 
     function testSetPriceFeedAddressFailWithPriceFeedZeroAddress() public {

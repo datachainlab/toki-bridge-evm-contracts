@@ -9,7 +9,7 @@ contract PseudoPriceFeedTest is Test {
     PseudoPriceFeed public t;
 
     function setUp() public {
-        t = new PseudoPriceFeed(100);
+        t = new PseudoPriceFeed(100, 8);
     }
 
     function testSetPrice() public {

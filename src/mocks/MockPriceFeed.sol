@@ -5,9 +5,15 @@ import "../interfaces/IChainlinkPriceFeed.sol";
 
 contract MockPriceFeed is IChainlinkPriceFeed {
     int256 public price;
+    uint8 public immutable DECIMALS;
 
-    constructor(int256 price_) {
+    constructor(int256 price_, uint8 decimals_) {
+        DECIMALS = decimals_;
         price = price_;
+    }
+
+    function decimals() external view override returns (uint8) {
+        return DECIMALS;
     }
 
     function latestRoundData()

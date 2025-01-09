@@ -8,6 +8,7 @@
     "appVersion": 1,
     "portId": "toki",
     "nativeTokenPriceFeed": {
+      "decimals": 8,
       "initialPseudoPrice_BN": "4000e+8"
     },
     "relayerFeeGasUsed_BN": "250000",
@@ -50,6 +51,7 @@
       "mintCap_BN": "500e+6",
       "basePrice_BN": "1e+8",
       "priceFeed": {
+        "decimals": 8,
         "initialPseudoPrice_BN": "1e+8"
       },
       "flowRateLimiter": {
@@ -108,6 +110,7 @@
       "mintCap_BN": "500e+6",
       "basePrice_BN": "1e+8",
       "priceFeed": {
+        "decimals": 8,
         "initialPseudoPrice_BN": "1e+8"
       },
       "flowRateLimiter": {
@@ -165,6 +168,7 @@
       "globalDecimals": 18,
       "basePrice_BN": "4000e+8",
       "priceFeed": {
+        "decimals": 8,
         "initialPseudoPrice_BN": "4000e+8"
       },
       "flowRateLimiter": {
@@ -200,6 +204,7 @@
         "refuelSrcCap_BN": "5e+16",
         "initialGasPrice_BN": "3e+9",
         "nativeTokenPriceFeed": {
+          "decimals": 8,
           "initialPseudoPrice_BN": "400e+8"
         }
       }

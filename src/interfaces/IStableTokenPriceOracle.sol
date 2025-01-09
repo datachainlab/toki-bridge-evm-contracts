@@ -37,4 +37,10 @@ interface IStableTokenPriceOracle {
     function getPriceFeedAddress(
         uint256 poolId
     ) external view returns (address);
+
+    function getPriceFeedDecimals(uint256 poolId) external view returns (uint8);
+
+    function getCurrentPriceAndDecimals(
+        uint256 poolId
+    ) external view returns (uint256, uint8);
 }

@@ -7,9 +7,14 @@ import "./interfaces/IChainlinkPriceFeed.sol";
 import "./interfaces/ITokenPriceOracle.sol";
 
 contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
+    struct PriceFeedInfo {
+        address priceFeedAddress;
+        uint8 priceFeedDecimals;
+    }
+
     // use chainId as tokenId for native token
     mapping(uint256 => uint256) private _tokenIdToPrice;
-    mapping(uint256 => address) private _tokenIdToPriceFeedAddress;
+    mapping(uint256 => PriceFeedInfo) private _tokenIdToPriceFeedInfo;
 
     uint256 public priceChangeThresholdE18;
 
@@ -37,7 +42,14 @@ contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
         if (priceFeedAddress == address(0)) {
             revert TokiZeroAddress("priceFeedAddress");
         }
-        _tokenIdToPriceFeedAddress[tokenId] = priceFeedAddress;
+
+        IChainlinkPriceFeed priceFeed = IChainlinkPriceFeed(priceFeedAddress);
+        uint8 decimals = priceFeed.decimals();
+
+        _tokenIdToPriceFeedInfo[tokenId] = PriceFeedInfo(
+            priceFeedAddress,
+            decimals
+        );
         updatePrice(tokenId, false);
         emit SetPriceFeedAddress(tokenId, priceFeedAddress);
     }
@@ -95,11 +107,33 @@ contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
     function getPriceFeedAddress(
         uint256 tokenId
     ) public view returns (address) {
-        address priceFeedAddress = _tokenIdToPriceFeedAddress[tokenId];
-        if (priceFeedAddress == address(0)) {
+        PriceFeedInfo memory info = _tokenIdToPriceFeedInfo[tokenId];
+        if (info.priceFeedAddress == address(0)) {
             revert TokiZeroAddress("priceFeedAddress");
         }
-        return priceFeedAddress;
+        return info.priceFeedAddress;
+    }
+
+    function getPriceFeedDecimals(uint256 tokenId) public view returns (uint8) {
+        PriceFeedInfo memory info = _tokenIdToPriceFeedInfo[tokenId];
+        if (info.priceFeedAddress == address(0)) {
+            revert TokiZeroAddress("priceFeedAddress");
+        }
+        return info.priceFeedDecimals;
+    }
+
+    function getPriceAndDecimals(
+        uint256 tokenId
+    ) public view returns (uint256 price, uint8 decimals) {
+        decimals = getPriceFeedDecimals(tokenId);
+        price = _tokenIdToPrice[tokenId];
+    }
+
+    function getLatestPriceAndDecimals(
+        uint256 tokenId
+    ) public view returns (uint256 price, uint8 decimals) {
+        decimals = getPriceFeedDecimals(tokenId);
+        price = getLatestPrice(tokenId);
     }
 
     function _abs(uint256 a, uint256 b) internal pure returns (uint256) {

@@ -94,25 +94,56 @@ contract RelayerFeeCalculator is
             return relayerFee;
         }
 
-        relayerFee.dstTokenPrice = ITokenPriceOracle(tokenPriceOracle).getPrice(
-            dstChainId
-        );
+        (
+            relayerFee.dstTokenPrice,
+            relayerFee.dstTokenDecimals
+        ) = ITokenPriceOracle(tokenPriceOracle).getPriceAndDecimals(dstChainId);
         relayerFee.dstGasPrice = IGasPriceOracle(gasPriceOracle).getPrice(
             dstChainId
         );
-        relayerFee.srcTokenPrice = ITokenPriceOracle(tokenPriceOracle).getPrice(
+        (
+            relayerFee.srcTokenPrice,
+            relayerFee.srcTokenDecimals
+        ) = ITokenPriceOracle(tokenPriceOracle).getPriceAndDecimals(
             block.chainid
         );
+
         if (relayerFee.srcTokenPrice == 0) {
             revert TokiZeroValue("srcTokenPrice");
         }
+
+        // The gas fee in src chain native token is:
+        //  `feeInSrcToken = dstGasFeeInDstToken * dstTokenPriceValue / srcTokenPriceValue`
+        // Note that tokenPriceValue is combined mantissa and decimals:
+        //  `tokenPriceValue = tokenPrice / (10 ** tokenPriceDecimals)
+        // so the fee is:
+        //  `feeInSrcToken = (dstGasFeeInDstToken * dstTokenPrice / srcTokenPrice) * (10 ** (srcTokenDecimals - dstTokenDecimals))`
+        // We first calculating `10 ** (srcTokenDecimals - dstTokenDecimals)` part in fraction format.
+        (
+            uint256 decimalRatioNumerator,
+            uint256 decimalRatioDenominator
+        ) = (relayerFee.dstTokenDecimals < relayerFee.srcTokenDecimals)
+                ? (
+                    10 **
+                        (relayerFee.srcTokenDecimals -
+                            relayerFee.dstTokenDecimals),
+                    uint256(1)
+                )
+                : (
+                    uint256(1),
+                    10 **
+                        (relayerFee.dstTokenDecimals -
+                            relayerFee.srcTokenDecimals)
+                );
 
         relayerFee.fee =
             (gasUsed *
                 relayerFee.dstGasPrice *
                 premiumBPS *
-                relayerFee.dstTokenPrice) /
-            (10000 * relayerFee.srcTokenPrice);
+                relayerFee.dstTokenPrice *
+                decimalRatioNumerator) /
+            (10000 * relayerFee.srcTokenPrice * decimalRatioDenominator);
+
         if (messageType == MessageType._TYPE_WITHDRAW) {
             relayerFee.srcGasPrice = IGasPriceOracle(gasPriceOracle).getPrice(
                 block.chainid

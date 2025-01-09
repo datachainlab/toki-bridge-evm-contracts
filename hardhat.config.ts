@@ -28,7 +28,8 @@ const config: HardhatUserConfig = {
       // set large number as possible for bytecode not to exceed 24576 bytes bytecode
       "src/Pool.sol": changeRuns(400),
       "src/mocks/MockUpgradePool.sol": changeRuns(100),
-      "src/Bridge.sol": changeRuns(1000),
+      "src/Bridge.sol": changeRuns(100),
+      "src/BridgeFallback.sol": changeRuns(3200),
       "src/mocks/MockUpgradeBridge.sol": changeRuns(100),
       "src/clients/RecoveredLCPClientUpgradeable.sol": changeRuns(3200),
     },
