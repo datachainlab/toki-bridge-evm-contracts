@@ -1465,7 +1465,8 @@ contract PoolTest is PoolTestDecimals, Test {
         for (uint8 i = 0; i < poolIds.length; i++) {
             Pool p = proxy(i);
             vm.chainId(chainIds[i]);
-            uint256 mintLD = LD(100_000);
+            // Amount small enough to avoid consuming deltaCredits in delta calculation
+            uint256 mintLD = LD(1_000);
             correctMint(chainIds[i], poolIds[i], _to, mintLD);
             assertEq(
                 p.totalLiquidity(),
@@ -1496,7 +1497,7 @@ contract PoolTest is PoolTestDecimals, Test {
                 );
                 assertEq(
                     p.totalLiquidity(),
-                    LDToGD(defaultMintAmountLd + mintLD) - _amountGD, // 1_099_900_000_000),
+                    LDToGD(defaultMintAmountLd + mintLD) - _amountGD, // 1_000_900_000_000),
                     "totalLiquidity1"
                 );
                 assertEq(p.totalWeight(), 200, "totalWeight");
@@ -1586,6 +1587,85 @@ contract PoolTest is PoolTestDecimals, Test {
         assertEq(fee.eqFee, 0, "fee.eqFee");
         assertEq(fee.eqReward, 0, "fee.eqReward");
         assertEq(fee.lastKnownBalance, 0, "fee.lastKnownBalance");
+    }
+
+    function testCallDeltaInFullMode() public {
+        // full mode
+        setupCredited(defaultMintAmountLd);
+        address _to = alice;
+        for (uint8 i = 0; i < poolIds.length; i++) {
+            Pool p = proxy(i);
+            assertTrue(p.batched(), "batched");
+            assertTrue(p.defaultLPMode(), "defaultLPMode");
+            assertTrue(p.defaultSwapMode(), "defaultSwapMode");
+
+            vm.chainId(chainIds[i]);
+            // amount small enough to avoid consuming deltaCredits in delta calculation
+            uint256 mintLD = LD(1_000);
+            correctMint(chainIds[i], poolIds[i], _to, mintLD);
+            assertEq(
+                p.totalLiquidity(),
+                LDToGD(defaultMintAmountLd + mintLD),
+                "totalLiquidity0"
+            );
+            assertEq(p.deltaCredit(), LDToGD(mintLD), "deltaCredit0");
+
+            // amount enough to consume deltaCredits in delta calculation
+            uint256 j = (i + 1) % poolIds.length;
+
+            // solhint-disable-next-line no-unused-vars
+            ITransferPoolFeeCalculator.FeeInfo memory _feeInfo = p.transfer(
+                chainIds[j],
+                poolIds[j],
+                _to,
+                LD(50_000),
+                LD(49_000),
+                true
+            );
+            // all deltaCredits are consumed
+            assertEq(p.deltaCredit(), 0, "deltaCredit1");
+        }
+    }
+
+    function testCallDeltaInNonFullMode() public {
+        setupCredited(defaultMintAmountLd);
+        address _to = alice;
+        for (uint8 i = 0; i < poolIds.length; i++) {
+            // non full mode
+            correctSetDefaultDelta(i, false, false);
+
+            Pool p = proxy(i);
+            assertTrue(p.batched(), "batched");
+            assertFalse(p.defaultLPMode(), "defaultLPMode");
+            assertFalse(p.defaultSwapMode(), "defaultSwapMode");
+
+            vm.chainId(chainIds[i]);
+
+            // amount small enough to avoid consuming deltaCredits in delta calculation
+            uint256 mintLD = LD(1_000);
+            correctMint(chainIds[i], poolIds[i], _to, mintLD);
+            assertEq(
+                p.totalLiquidity(),
+                LDToGD(defaultMintAmountLd + mintLD),
+                "totalLiquidity0"
+            );
+            assertEq(p.deltaCredit(), LDToGD(mintLD), "deltaCredit0");
+
+            // amount enough to consume deltaCredits in delta calculation
+            uint256 j = (i + 1) % poolIds.length;
+
+            // solhint-disable-next-line no-unused-vars
+            ITransferPoolFeeCalculator.FeeInfo memory _feeInfo = p.transfer(
+                chainIds[j],
+                poolIds[j],
+                _to,
+                LD(50_000),
+                LD(49_000),
+                true
+            );
+            // not all deltaCredits are consumed
+            assertEq(p.deltaCredit(), LD(500), "deltaCredit1");
+        }
     }
 
     // ====================== require failure cases ======================

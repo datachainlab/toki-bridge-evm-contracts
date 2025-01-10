@@ -969,8 +969,9 @@ contract Pool is
                     for (uint256 i = 0; i < peerPoolInfosLength; ++i) {
                         PeerPoolInfo storage peerPoolInfo = $._peerPoolInfos[i];
                         // credits = credits + diff[i] + exceedCredit * (weight / totalWeight)
-                        uint256 amtToCredit = (excessCredit *
-                            peerPoolInfo.weight) / $._totalWeight;
+                        uint256 amtToCredit = diff[i] +
+                            (excessCredit * peerPoolInfo.weight) /
+                            $._totalWeight;
                         spent = spent + amtToCredit;
                         peerPoolInfo.credits =
                             peerPoolInfo.credits +
