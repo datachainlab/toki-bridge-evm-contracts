@@ -1748,6 +1748,14 @@ contract BridgeTest is Test {
             assertEq(address(outerService).balance, 0);
         }
 
+        // retry on post (fail)
+        bridge.retryOnReceive(DST_CHANNEL, 1);
+        // bridge & outer balance
+        {
+            assertEq(address(bridge).balance, 0);
+            assertEq(address(outerService).balance, 0);
+        }
+
         // set bridge balance 2000
         payable(address(bridge)).call{value: 2_000}("");
 

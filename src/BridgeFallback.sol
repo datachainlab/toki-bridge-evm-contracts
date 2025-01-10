@@ -210,7 +210,7 @@ contract BridgeFallback is
                     );
                 }
             } else {
-                addRevertRefuel(
+                this.addRevertRefuel(
                     srcChainId,
                     sequence,
                     p.to,
@@ -249,7 +249,7 @@ contract BridgeFallback is
         uint256 refuelAmount,
         IBCUtils.ExternalInfo memory externalInfo,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.receiveRetryBlocks
@@ -285,7 +285,7 @@ contract BridgeFallback is
         uint256 refuelAmount,
         IBCUtils.ExternalInfo memory externalInfo,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.receiveRetryBlocks
@@ -319,7 +319,7 @@ contract BridgeFallback is
         address to,
         uint256 refuelAmount,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.externalRetryBlocks
@@ -352,7 +352,7 @@ contract BridgeFallback is
         uint256 refuelAmount,
         IBCUtils.ExternalInfo memory externalInfo,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.externalRetryBlocks
@@ -387,7 +387,7 @@ contract BridgeFallback is
         address to,
         IBCUtils.ExternalInfo memory externalInfo,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.externalRetryBlocks
@@ -422,7 +422,7 @@ contract BridgeFallback is
         uint256 amountGD,
         uint256 mintAmountGD,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.withdrawRetryBlocks
