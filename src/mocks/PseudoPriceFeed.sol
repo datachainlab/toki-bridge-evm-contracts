@@ -31,7 +31,11 @@ contract PseudoPriceFeed is IChainlinkPriceFeed, Ownable {
             uint80 answeredInRound
         )
     {
-        return (uint80(0), price, uint256(0), uint256(0), uint80(0));
+        // slither-disable-next-line timestamp
+        uint256 ts = (block.timestamp < 600)
+            ? block.timestamp
+            : block.timestamp - 600;
+        return (uint80(0), price, ts, ts, uint80(0));
     }
 
     function setPrice(int256 price_) public onlyOwner {

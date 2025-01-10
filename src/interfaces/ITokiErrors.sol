@@ -47,6 +47,7 @@ interface ITokiErrors {
     error TokiPoolRecvIsFailed(uint256 poolId);
     error TokiPoolWithdrawConfirmIsFailed(uint256 poolId);
     error TokiPriceIsNotPositive(int256 value);
+    error TokiPriceIsExpired(uint256 updatedAt);
 
     error TokiDstChainIdNotAccepted(uint256 dstChainId);
 

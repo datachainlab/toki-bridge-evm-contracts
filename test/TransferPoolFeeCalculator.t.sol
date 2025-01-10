@@ -48,6 +48,12 @@ contract MockStableTokenPriceOracle is IStableTokenPriceOracle {
         return priceDeviationStatus;
     }
 
+    function getValidityPeriod(
+        uint256
+    ) external pure override returns (uint256) {
+        return 1;
+    }
+
     function getCurrentPrice(
         uint256 _poolId
     ) public view override returns (uint256) {
@@ -88,6 +94,12 @@ contract MockTokenPriceOracle is ITokenPriceOracle {
 
     function mockSetPrice(uint256 tokenId, uint256 price) external {
         tokenId2Price[tokenId] = price;
+    }
+
+    function getValidityPeriod(
+        uint256 /* tokenId */
+    ) external pure override returns (uint256) {
+        return 1;
     }
 
     function getPrice(uint256 tokenId) public view returns (uint256) {

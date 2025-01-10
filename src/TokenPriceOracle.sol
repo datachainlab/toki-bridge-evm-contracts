@@ -10,6 +10,7 @@ contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
     struct PriceFeedInfo {
         address priceFeedAddress;
         uint8 priceFeedDecimals;
+        uint256 validityPeriod;
     }
 
     // use chainId as tokenId for native token
@@ -22,6 +23,8 @@ contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
     event SetPriceChangeThreshold(uint256 priceChangeThreshold);
 
     event SetPriceFeedAddress(uint256 tokenId, address priceFeedAddress);
+
+    event SetValidityPeriod(uint256 tokenId, uint256 newValidityPeriod);
 
     constructor(uint256 priceChangeThresholdE18_) {
         priceChangeThresholdE18 = priceChangeThresholdE18_;
@@ -37,7 +40,8 @@ contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
 
     function setPriceFeedAddress(
         uint256 tokenId,
-        address priceFeedAddress
+        address priceFeedAddress,
+        uint256 validityPeriodInSeconds
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (priceFeedAddress == address(0)) {
             revert TokiZeroAddress("priceFeedAddress");
@@ -48,10 +52,22 @@ contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
 
         _tokenIdToPriceFeedInfo[tokenId] = PriceFeedInfo(
             priceFeedAddress,
-            decimals
+            decimals,
+            validityPeriodInSeconds
         );
+
         updatePrice(tokenId, false);
         emit SetPriceFeedAddress(tokenId, priceFeedAddress);
+        emit SetValidityPeriod(tokenId, validityPeriodInSeconds);
+    }
+
+    function setValidityPeriod(
+        uint256 tokenId,
+        uint256 validityPeriodInSeconds
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _tokenIdToPriceFeedInfo[tokenId]
+            .validityPeriod = validityPeriodInSeconds;
+        emit SetValidityPeriod(tokenId, validityPeriodInSeconds);
     }
 
     function getPrice(uint256 tokenId) external view returns (uint256) {
@@ -87,19 +103,29 @@ contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
     }
 
     function getLatestPrice(uint256 tokenId) public view returns (uint256) {
-        address priceFeedAddress = getPriceFeedAddress(tokenId);
-        IChainlinkPriceFeed priceFeed = IChainlinkPriceFeed(priceFeedAddress);
+        PriceFeedInfo memory info = _getPriceFeedInfo(tokenId);
+        IChainlinkPriceFeed priceFeed = IChainlinkPriceFeed(
+            info.priceFeedAddress
+        );
 
         (
             uint80 _roundId, // solhint-disable-line no-unused-vars
             int256 price,
             uint256 _startedAt, // solhint-disable-line no-unused-vars
-            uint256 _updatedAt, // solhint-disable-line no-unused-vars
+            uint256 updatedAt,
             uint80 _answeredInRound // solhint-disable-line no-unused-vars
         ) = priceFeed.latestRoundData();
 
         if (price <= 0) {
             revert TokiPriceIsNotPositive(price);
+        }
+
+        // slither-disable-next-line timestamp
+        uint256 pastUpdated = (updatedAt < block.timestamp)
+            ? block.timestamp - updatedAt
+            : 0;
+        if (info.validityPeriod < pastUpdated) {
+            revert TokiPriceIsExpired(updatedAt);
         }
         return uint256(price);
     }
@@ -107,18 +133,12 @@ contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
     function getPriceFeedAddress(
         uint256 tokenId
     ) public view returns (address) {
-        PriceFeedInfo memory info = _tokenIdToPriceFeedInfo[tokenId];
-        if (info.priceFeedAddress == address(0)) {
-            revert TokiZeroAddress("priceFeedAddress");
-        }
+        PriceFeedInfo memory info = _getPriceFeedInfo(tokenId);
         return info.priceFeedAddress;
     }
 
     function getPriceFeedDecimals(uint256 tokenId) public view returns (uint8) {
-        PriceFeedInfo memory info = _tokenIdToPriceFeedInfo[tokenId];
-        if (info.priceFeedAddress == address(0)) {
-            revert TokiZeroAddress("priceFeedAddress");
-        }
+        PriceFeedInfo memory info = _getPriceFeedInfo(tokenId);
         return info.priceFeedDecimals;
     }
 
@@ -134,6 +154,21 @@ contract TokenPriceOracle is ITokiErrors, AccessControl, ITokenPriceOracle {
     ) public view returns (uint256 price, uint8 decimals) {
         decimals = getPriceFeedDecimals(tokenId);
         price = getLatestPrice(tokenId);
+    }
+
+    function getValidityPeriod(uint256 tokenId) public view returns (uint256) {
+        PriceFeedInfo memory info = _getPriceFeedInfo(tokenId);
+        return info.validityPeriod;
+    }
+
+    function _getPriceFeedInfo(
+        uint256 tokenId
+    ) internal view returns (PriceFeedInfo memory) {
+        PriceFeedInfo memory info = _tokenIdToPriceFeedInfo[tokenId];
+        if (info.priceFeedAddress == address(0)) {
+            revert TokiZeroAddress("priceFeedAddress");
+        }
+        return info;
     }
 
     function _abs(uint256 a, uint256 b) internal pure returns (uint256) {

@@ -26,5 +26,7 @@ interface ITokenPriceOracle {
         uint256 tokenId
     ) external view returns (address);
 
+    function getValidityPeriod(uint256 tokenId) external view returns (uint256);
+
     function tokenIdToki() external pure returns (uint256);
 }

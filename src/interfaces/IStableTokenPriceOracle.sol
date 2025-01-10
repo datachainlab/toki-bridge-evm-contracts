@@ -17,7 +17,8 @@ interface IStableTokenPriceOracle {
     event PoolStateUpdated(
         uint256 indexed poolId,
         uint256 basePrice,
-        address priceFeedAddress
+        address priceFeedAddress,
+        uint256 validityPeriod
     );
 
     function updateCurrentPrice(uint256 poolId, bool forceUpdate) external;
@@ -43,4 +44,6 @@ interface IStableTokenPriceOracle {
     function getCurrentPriceAndDecimals(
         uint256 poolId
     ) external view returns (uint256, uint8);
+
+    function getValidityPeriod(uint256 poolId) external view returns (uint256);
 }

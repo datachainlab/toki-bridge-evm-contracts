@@ -9,10 +9,15 @@ contract StableTokenPriceOracleEvents {
     event PriceUpdated(uint256 indexed poolId, uint256 price);
     event PriceDriftThresholdUpdated(uint256 priceDriftThreshold);
     event PriceDepegThresholdUpdated(uint256 priceDepegThreshold);
+    event ValidityPeriodUpdated(
+        uint256 indexed poolId,
+        uint256 priceValidityPeriod
+    );
     event PoolStateUpdated(
         uint256 indexed poolId,
         uint256 basePrice,
-        address priceFeedAddress
+        address priceFeedAddress,
+        uint256 validityPeriod
     );
 }
 
@@ -49,11 +54,12 @@ contract StableTokenPriceOracleTest is Test, StableTokenPriceOracleEvents {
         stableTokenPriceOracle = new StableTokenPriceOracleHarness();
 
         vm.expectEmit(true, true, true, true);
-        emit PoolStateUpdated(0, 10000, address(priceFeed));
+        emit PoolStateUpdated(0, 10000, address(priceFeed), 60 * 60 * 24);
         stableTokenPriceOracle.setBasePriceAndFeedAddress(
             0,
             10000,
-            address(priceFeed)
+            address(priceFeed),
+            60 * 60 * 24
         );
     }
 
@@ -70,11 +76,12 @@ contract StableTokenPriceOracleTest is Test, StableTokenPriceOracleEvents {
 
     function testSetBasePriceAndFeedAddress() public {
         vm.expectEmit(address(stableTokenPriceOracle));
-        emit PoolStateUpdated(1, 20000, address(priceFeed));
+        emit PoolStateUpdated(1, 20000, address(priceFeed), 60 * 60 * 24);
         stableTokenPriceOracle.setBasePriceAndFeedAddress(
             1,
             20000,
-            address(priceFeed)
+            address(priceFeed),
+            60 * 60 * 24
         );
         assertEq(stableTokenPriceOracle.getBasePrice(1), 20000);
         assertEq(
@@ -92,7 +99,12 @@ contract StableTokenPriceOracleTest is Test, StableTokenPriceOracleEvents {
                 "priceFeedAddress"
             )
         );
-        stableTokenPriceOracle.setBasePriceAndFeedAddress(1, 20000, empty);
+        stableTokenPriceOracle.setBasePriceAndFeedAddress(
+            1,
+            20000,
+            empty,
+            60 * 60 * 24
+        );
     }
 
     function testSetBasePriceAndFeedAddressRevertsWhenSenderIsNotAdmin()
@@ -109,7 +121,8 @@ contract StableTokenPriceOracleTest is Test, StableTokenPriceOracleEvents {
         stableTokenPriceOracle.setBasePriceAndFeedAddress(
             2,
             20000,
-            address(priceFeed)
+            address(priceFeed),
+            60 * 60 * 24
         );
     }
 
@@ -126,7 +139,8 @@ contract StableTokenPriceOracleTest is Test, StableTokenPriceOracleEvents {
         stableTokenPriceOracle.setBasePriceAndFeedAddress(
             1,
             0,
-            address(priceFeed)
+            address(priceFeed),
+            60 * 60 * 24
         );
     }
 
@@ -138,22 +152,44 @@ contract StableTokenPriceOracleTest is Test, StableTokenPriceOracleEvents {
         stableTokenPriceOracle.setBasePriceAndFeedAddress(
             0,
             1,
-            address(priceFeed0)
+            address(priceFeed0),
+            60 * 60 * 24
         );
         stableTokenPriceOracle.setBasePriceAndFeedAddress(
             8,
             1,
-            address(priceFeed8)
+            address(priceFeed8),
+            60 * 60 * 24
         );
         stableTokenPriceOracle.setBasePriceAndFeedAddress(
             18,
             1,
-            address(priceFeed18)
+            address(priceFeed18),
+            60 * 60 * 24
         );
 
         assertEq(stableTokenPriceOracle.getPriceFeedDecimals(0), 0, "dec 0");
         assertEq(stableTokenPriceOracle.getPriceFeedDecimals(8), 8, "dec 8");
         assertEq(stableTokenPriceOracle.getPriceFeedDecimals(18), 18, "dec 18");
+    }
+
+    function testSetValidityPeriodSeconds() public {
+        vm.expectEmit(true, true, false, true);
+        emit ValidityPeriodUpdated(0, 3939);
+        stableTokenPriceOracle.setValidityPeriodSeconds(0, 3939);
+        assertEq(stableTokenPriceOracle.getValidityPeriod(0), 3939);
+    }
+
+    function testSetValidityPeriodSecondsRevertsWhenSenderIsNotAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(0x01),
+                stableTokenPriceOracle.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        vm.prank(address(0x01));
+        stableTokenPriceOracle.setValidityPeriodSeconds(2, 3939);
     }
 
     function testSetPriceDriftThreshold() public {
@@ -436,5 +472,23 @@ contract StableTokenPriceOracleTest is Test, StableTokenPriceOracleEvents {
 
         stableTokenPriceOracle.updateCurrentPrice(0, true);
         assertEq(stableTokenPriceOracle.getCurrentPrice(0), 9848);
+    }
+
+    function testGetLatestPriceRevertsWhenExpired() public {
+        // note that MockPriceFeed always returns 0 as updatedAt
+        stableTokenPriceOracle.setValidityPeriodSeconds(0, 100);
+
+        skip(1000);
+        rewind(block.timestamp - 100);
+        assertEq(block.timestamp, 100);
+        stableTokenPriceOracle.exposedGetLatestPrice(0); // pass
+
+        skip(1000);
+        rewind(block.timestamp - 101);
+        assertEq(block.timestamp, 101);
+        vm.expectRevert(
+            abi.encodeWithSelector(ITokiErrors.TokiPriceIsExpired.selector, 0)
+        );
+        stableTokenPriceOracle.exposedGetLatestPrice(0);
     }
 }

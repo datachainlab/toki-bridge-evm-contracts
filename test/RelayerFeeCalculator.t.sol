@@ -40,13 +40,15 @@ contract RelayerFeeCalculatorTest is Test {
             srcTokenPriceFeed = new MockPriceFeed(SRC_TOKEN_PRICE, 8);
             tokenPriceOracle.setPriceFeedAddress(
                 SRC_CHAIN_ID,
-                address(srcTokenPriceFeed)
+                address(srcTokenPriceFeed),
+                60 * 60 * 24
             );
 
             dstTokenPriceFeed = new MockPriceFeed(DST_TOKEN_PRICE, 8);
             tokenPriceOracle.setPriceFeedAddress(
                 DST_CHAIN_ID,
-                address(dstTokenPriceFeed)
+                address(dstTokenPriceFeed),
+                60 * 60 * 24
             );
         }
 
@@ -244,8 +246,8 @@ contract RelayerFeeCalculatorTest is Test {
         MockPriceFeed _srcFeed = new MockPriceFeed(SRC_TOKEN_PRICE, 6);
         MockPriceFeed _dstFeed = new MockPriceFeed(DST_TOKEN_PRICE, 8);
 
-        tokenPriceOracle.setPriceFeedAddress(_srcChainId, address(_srcFeed));
-        tokenPriceOracle.setPriceFeedAddress(_dstChainId, address(_dstFeed));
+        tokenPriceOracle.setPriceFeedAddress(_srcChainId, address(_srcFeed), 3600);
+        tokenPriceOracle.setPriceFeedAddress(_dstChainId, address(_dstFeed), 3600);
 
         assertEq(
             relayerFeeCalculator
@@ -278,9 +280,9 @@ contract RelayerFeeCalculatorTest is Test {
         MockPriceFeed _srcFeed = new MockPriceFeed(SRC_TOKEN_PRICE, 8);
         MockPriceFeed _dstFeed = new MockPriceFeed(DST_TOKEN_PRICE, 6);
 
-        tokenPriceOracle.setPriceFeedAddress(_srcChainId, address(_srcFeed));
+        tokenPriceOracle.setPriceFeedAddress(_srcChainId, address(_srcFeed), 3600);
 
-        tokenPriceOracle.setPriceFeedAddress(_dstChainId, address(_dstFeed));
+        tokenPriceOracle.setPriceFeedAddress(_dstChainId, address(_dstFeed), 3600);
 
         assertEq(
             relayerFeeCalculator

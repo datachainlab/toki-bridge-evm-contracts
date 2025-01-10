@@ -156,11 +156,13 @@ contract BridgeTest is Test {
             dstPriceFeed = new MockPriceFeed(200_000, 8);
             tokenPriceOracle.setPriceFeedAddress(
                 SRC_CHAIN_ID,
-                address(srcPriceFeed)
+                address(srcPriceFeed),
+                60 * 60 * 24
             );
             tokenPriceOracle.setPriceFeedAddress(
                 DST_CHAIN_ID,
-                address(dstPriceFeed)
+                address(dstPriceFeed),
+                60 * 60 * 24
             );
         }
 

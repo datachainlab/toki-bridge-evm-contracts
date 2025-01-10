@@ -137,11 +137,13 @@ contract LocalhostTestSetup is LocalhostTest {
                 t.price.dstPriceFeed = new MockPriceFeed(200_000, 8);
                 t.price.tokenPriceOracle.setPriceFeedAddress(
                     chainDefs[0].chainId,
-                    address(t.price.srcPriceFeed)
+                    address(t.price.srcPriceFeed),
+                    60 * 60 * 24
                 );
                 t.price.tokenPriceOracle.setPriceFeedAddress(
                     chainDefs[1].chainId,
-                    address(t.price.dstPriceFeed)
+                    address(t.price.dstPriceFeed),
+                    60 * 60 * 24
                 );
             }
 
@@ -328,7 +330,8 @@ contract LocalhostTestSetup is LocalhostTest {
                     .setBasePriceAndFeedAddress(
                         pi,
                         1_000,
-                        address(p.priceFeed)
+                        address(p.priceFeed),
+                        60 * 60 * 24
                     );
 
                 p.feeCalculator = new TransferPoolFeeCalculator(

@@ -180,6 +180,7 @@ export type DeployTokenPriceOracleParametersBase = {
 export type DeployTokenPriceOracleParameters = DeployTokenPriceOracleParametersBase & {
   useTokiToken: boolean,
   tokiTokenPriceFeed: DeployPriceFeedParameters | undefined,
+  validityPeriodSec: number,
 }
 export type DeployTokenPriceOracleResult = {
   tokenPriceOracle: TokenPriceOracle,
@@ -205,6 +206,7 @@ export async function deployTokenPriceOracle(
       tokenPriceOracle.setPriceFeedAddress(
         await tokenPriceOracle.tokenIdToki(),
         tokiTokenPriceFeedAddress,
+        BigInt(p.validityPeriodSec),
         await deployer.txOptions()
       ));
   }
@@ -227,6 +229,7 @@ export type DeployBridgeParametersBase = {
   appVersion: number,
   portId: string,
   nativeTokenPriceFeed: DeployPriceFeedParameters,
+  nativeTokenPriceFeedValidityPeriodSec: number,
   relayerFeeGasUsed_BN: bigint,
   relayerFeePremiumBPS_BN: bigint,
   receiveRetryBlock: number,
@@ -260,7 +263,8 @@ export async function deployBridge(
   // set price oracle (peer chain's price oracle is created in setChannel())
   const tokenPriceOracle = await deployer.getDeployed<TokenPriceOracle>("TokenPriceOracle", p.deployed.tokenPriceOracleAddress);
   const tokenPriceFeedAddress = await deployPriceFeed(deployer, p.nativeTokenPriceFeed, "NativeTokenPseudoPriceFeed");
-  await deployer.receipt("TokenPriceOracle.setPriceFeedAddress", tokenPriceOracle.setPriceFeedAddress(deployer.network.chainId, tokenPriceFeedAddress, await deployer.txOptions()));
+
+  await deployer.receipt("TokenPriceOracle.setPriceFeedAddress", tokenPriceOracle.setPriceFeedAddress(deployer.network.chainId, tokenPriceFeedAddress, BigInt(p.nativeTokenPriceFeedValidityPeriodSec), await deployer.txOptions()));
 
   const gasPriceOracle = await deployer.getDeployed<GasPriceOracle>("GasPriceOracle", p.deployed.gasPriceOracleAddress);
   // setup protocolFeeOwner;
@@ -359,6 +363,7 @@ export type DeployPoolParametersBase = {
     mintCap_BN: bigint,
     basePrice_BN: bigint,
     priceFeed: DeployPriceFeedParameters,
+    priceFeedValidityPeriodSec: number,
     flowRateLimiter: FlowRateLimiterParameters,
   },
   liquidityToken: {
@@ -411,10 +416,10 @@ export async function deployPool(deployer: Deployer, p: DeployPoolParameters): P
   const tokenPriceFeedAddress = await deployPriceFeed(deployer, p.pooledToken.priceFeed);
   if (p.pooledToken.tokenIdInTokenPriceOracle_BN == null) {
     const stableTokenPriceOracle = await deployer.getDeployed<StableTokenPriceOracle>("StableTokenPriceOracle", p.deployed.stableTokenPriceOracleAddress);
-    await deployer.receipt("StableTokenPriceOracle.setBasePriceAndFeedAddress", stableTokenPriceOracle.setBasePriceAndFeedAddress(p.poolId, p.pooledToken.basePrice_BN, tokenPriceFeedAddress, await deployer.txOptions()));
+    await deployer.receipt("StableTokenPriceOracle.setBasePriceAndFeedAddress", stableTokenPriceOracle.setBasePriceAndFeedAddress(p.poolId, p.pooledToken.basePrice_BN, tokenPriceFeedAddress, BigInt(p.pooledToken.priceFeedValidityPeriodSec), await deployer.txOptions()));
   } else { // non-stable token
     const tokenPriceOracle = await deployer.getDeployed<TokenPriceOracle>("TokenPriceOracle", p.deployed.tokenPriceOracleAddress);
-    await deployer.receipt("TokenPriceOracle.setPriceFeedAddress", tokenPriceOracle.setPriceFeedAddress(p.pooledToken.tokenIdInTokenPriceOracle_BN, tokenPriceFeedAddress, await deployer.txOptions()));
+    await deployer.receipt("TokenPriceOracle.setPriceFeedAddress", tokenPriceOracle.setPriceFeedAddress(p.pooledToken.tokenIdInTokenPriceOracle_BN, tokenPriceFeedAddress, BigInt(p.pooledToken.priceFeedValidityPeriodSec), await deployer.txOptions()));
 
     const transferPoolFeeCalculator = await deployer.getDeployed<TransferPoolFeeCalculator>("TransferPoolFeeCalculator", p.deployed.transferPoolFeeCalculatorAddress);
     await deployer.receipt("TransferPoolFeeCalculator.setTokenId", transferPoolFeeCalculator.setTokenId(p.poolId, p.pooledToken.tokenIdInTokenPriceOracle_BN, await deployer.txOptions()));
@@ -480,6 +485,7 @@ export type SetChannelParametersBase = {
       initialGasPrice_BN: bigint,
       nativeTokenPriceFeed: DeployPriceFeedParameters
       nativeTokenPseudoInitialPrice_BN: bigint,
+      nativeTokenPriceFeedValidityPeriodSec: number,
     }
   ]
   refuelDstCap_BN: bigint,
@@ -515,7 +521,7 @@ export async function setChannel(
     const channelInfo = { port: dstChain.portId, channel: dstChain.channelId };
     await deployer.receipt("Bridge.setChainLookup", bridge.setChainLookup(channelInfo.channel, dstChain.chainId_BN, await deployer.txOptions()));
     await deployer.receipt("Bridge.setRefuelSrcCap", bridge.setRefuelSrcCap(channelInfo.channel, dstChain.refuelSrcCap_BN, await deployer.txOptions()));
-    await deployer.receipt("TokenPriceOracle.setPriceFeedAddress", tokenPriceOracle.setPriceFeedAddress(dstChain.chainId_BN, tokenPriceFeedAddress, await deployer.txOptions()));
+    await deployer.receipt("TokenPriceOracle.setPriceFeedAddress", tokenPriceOracle.setPriceFeedAddress(dstChain.chainId_BN, tokenPriceFeedAddress, BigInt(dstChain.nativeTokenPriceFeedValidityPeriodSec), await deployer.txOptions()));
     await deployer.receipt("GasPriceOracle.updatePrice", gasPriceOracle.updatePrice(dstChain.chainId_BN, dstChain.initialGasPrice_BN, await deployer.txOptions()));
     if (tokiEscrow != null) {
       await deployer.receipt("TokiEscrow.setAcceptedDstChainId", tokiEscrow.setAcceptedDstChainId(dstChain.chainId_BN, true, await deployer.txOptions()));

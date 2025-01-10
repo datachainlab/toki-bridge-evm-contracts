@@ -11,6 +11,7 @@
       "decimals": 8,
       "initialPseudoPrice_BN": "4000e+8"
     },
+    "nativeTokenPriceFeedValidityPeriodSec": 21600,
     "relayerFeeGasUsed_BN": "250000",
     "relayerFeePremiumBPS_BN": "10500",
     "receiveRetryBlock": 100800,
@@ -54,6 +55,7 @@
         "decimals": 8,
         "initialPseudoPrice_BN": "1e+8"
       },
+      "priceFeedValidityPeriodSec": 129600,
       "flowRateLimiter": {
         "limitLD_BN": "1_000_000e+6",
         "thresholdLD_BN": "50_000e+6",
@@ -113,6 +115,7 @@
         "decimals": 8,
         "initialPseudoPrice_BN": "1e+8"
       },
+      "priceFeedValidityPeriodSec": 129600,
       "flowRateLimiter": {
         "limitLD_BN": "1_000_000e+6",
         "thresholdLD_BN": "50_000e+6",
@@ -171,6 +174,7 @@
         "decimals": 8,
         "initialPseudoPrice_BN": "4000e+8"
       },
+      "priceFeedValidityPeriodSec": 129600,
       "flowRateLimiter": {
         "limitLD_BN": "200e+18",
         "thresholdLD_BN": "167e+17",
@@ -206,7 +210,8 @@
         "nativeTokenPriceFeed": {
           "decimals": 8,
           "initialPseudoPrice_BN": "400e+8"
-        }
+        },
+        "nativeTokenPriceFeedValidityPeriodSec": 21600
       }
     ],
     "refuelDstCap_BN": "5e+16"
