@@ -66,7 +66,7 @@ contract PoolTestWithFeeCommon is PoolTestDecimals, Test {
     address public alice = address(0x01);
     address public admin = address(0x10);
 
-    Pool public pool;
+    IPool public pool;
     MockUSD public token;
     ERC1967Proxy public proxy;
     MockTransferPoolFeeCalculatorWithFee public feeCalculator;
@@ -80,13 +80,13 @@ contract PoolTestWithFeeCommon is PoolTestDecimals, Test {
     function setUpCommon() public {
         setUpDecimals(18, 6);
         vm.chainId(CHAIN_ID);
-        pool = new Pool(100, 200, 100_000_000_000, 100_000_000);
+        Pool p = new Pool(100, 200, 100_000_000_000, 100_000_000);
         token = new MockUSD(6, 1_000_000);
 
         // calcFee() always returns with eq fee
         feeCalculator = new MockTransferPoolFeeCalculatorWithFee();
-
-        pool.initialize(
+        bytes memory initializeData = abi.encodeCall(
+            Pool.initialize,
             Pool.InitializeParam(
                 "LP token",
                 "LP",
@@ -100,11 +100,17 @@ contract PoolTestWithFeeCommon is PoolTestDecimals, Test {
                 200 * 1e18
             )
         );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(p), initializeData);
+        pool = IPool(address(proxy));
+
         vm.startPrank(admin);
         pool.registerPeerPool(PEER_CHAIN_ID, PEER_POOL_ID, 1);
         pool.activatePeerPool(PEER_CHAIN_ID, PEER_POOL_ID);
         // for transfer()
-        pool.grantRole(pool.DEFAULT_ROUTER_ROLE(), address(this));
+        IAccessControl(address(pool)).grantRole(
+            p.DEFAULT_ROUTER_ROLE(),
+            address(this)
+        );
         vm.stopPrank();
     }
 
@@ -186,7 +192,7 @@ contract PoolTestAboutEqFee is PoolTestWithFeeCommon {
                 feeCalculator.calcFee.selector,
                 ITransferPoolFeeCalculator.SrcPoolInfo({
                     addr: address(pool),
-                    id: pool.poolId(),
+                    id: POOL_ID,
                     globalDecimals: globalDecimals,
                     balance: GD(3939),
                     totalLiquidity: pool.totalLiquidity(),

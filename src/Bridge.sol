@@ -71,6 +71,7 @@ contract Bridge is
     constructor(uint256 appVersion_, string memory port) {
         APP_VERSION = appVersion_;
         PORT = port.toShortString();
+        _disableInitializers();
     }
 
     function initialize(

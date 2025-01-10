@@ -26,6 +26,11 @@ contract ETHVault is
     event SetNoUnwrapTo(address addr);
     event ResetNoUnwrapTo(address addr);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize() public initializer {
         __ERC20_init("TOKI wrapped ETH", "tokiETH");
         __Ownable_init(msg.sender);

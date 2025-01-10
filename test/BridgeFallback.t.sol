@@ -4,7 +4,9 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "../src/Bridge.sol";
 import "../src/BridgeFallback.sol";
+import "../src/interfaces/IBridge.sol";
 import {Errors} from "@openzeppelin/contracts/utils/Errors.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract BridgeFallbackTest is Test {
     uint256 public constant FINNEY = 10 ** 15;
@@ -24,13 +26,17 @@ contract BridgeFallbackTest is Test {
 
     address public constant ALICE = address(0x101);
 
-    Bridge public bridge;
+    IBridge public bridge;
     /// @dev bridge address is set for test fallback functions
     BridgeFallback public bridgeFallback;
 
+    bytes32 public bridgeDefaultAdminRole;
+    bytes32 public bridgeRelayerFeeOwnerRole;
+
     function setUp() public {
-        bridge = new Bridge(APP_VERSION, PORT);
-        bridge.initialize(
+        Bridge b = new Bridge(APP_VERSION, PORT);
+        bytes memory initializeData = abi.encodeCall(
+            Bridge.initialize,
             Bridge.InitializeParam(
                 IBC_HANDLER,
                 POOL_REPOSITORY,
@@ -45,8 +51,14 @@ contract BridgeFallbackTest is Test {
                 2500
             )
         );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(b), initializeData);
+        bridge = IBridge(address(proxy));
+
         bridgeFallback = BridgeFallback(payable(address(bridge)));
         bridgeFallback.setChainLookup(CHANNEL, DST_CHAIN_ID);
+
+        bridgeDefaultAdminRole = b.DEFAULT_ADMIN_ROLE();
+        bridgeRelayerFeeOwnerRole = b.RELAYER_FEE_OWNER_ROLE();
     }
 
     function testAddRevertReceivePoolFailUnauthorized() public {
@@ -419,7 +431,7 @@ contract BridgeFallbackTest is Test {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 ALICE,
-                bridge.DEFAULT_ADMIN_ROLE()
+                bridgeDefaultAdminRole
             )
         );
         bridgeFallback.draw(100, ALICE);
@@ -465,7 +477,7 @@ contract BridgeFallbackTest is Test {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 address(this),
-                bridge.RELAYER_FEE_OWNER_ROLE()
+                bridgeRelayerFeeOwnerRole
             )
         );
         bridgeFallback.setRelayerFeeCalculator(changedCalculator);

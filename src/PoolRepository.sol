@@ -24,6 +24,11 @@ contract PoolRepository is
 
     uint256 public length;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize() public initializer {
         __AccessControl_init();
         __UUPSUpgradeable_init();

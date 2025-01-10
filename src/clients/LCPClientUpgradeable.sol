@@ -14,7 +14,9 @@ contract LCPClientUpgradeable is
     constructor(
         address ibcHandler,
         bool developmentMode
-    ) LCPClientBase(ibcHandler, developmentMode) {}
+    ) LCPClientBase(ibcHandler, developmentMode) {
+        _disableInitializers();
+    }
 
     function initialize(bytes memory rootCACert) public initializer {
         initializeRootCACert(rootCACert);

@@ -46,6 +46,7 @@ abstract contract StaticFlowRateLimiter is
         LOCK_PERIOD = lockPeriod;
         LIMIT = limit;
         THRESHOLD = threshold;
+        _disableInitializers();
     }
 
     function resetFlowRateLimit() public onlyRole(DEFAULT_ADMIN_ROLE) {

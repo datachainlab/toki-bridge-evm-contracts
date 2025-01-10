@@ -26,6 +26,11 @@ contract TokiToken is
     /* ========== EVENTS ========== */
     event SetSoftcap(uint256 softcap);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         uint256 initialSupply,
         uint256 cap,

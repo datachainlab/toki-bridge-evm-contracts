@@ -23,6 +23,7 @@ contract PseudoToken is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(uint8 decimals_) {
         DECIMALS = decimals_;
+        _disableInitializers();
     }
 
     function initialize(

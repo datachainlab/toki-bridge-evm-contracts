@@ -37,7 +37,9 @@ contract OwnableIBCHandlerUpgradeable is
             ibcChannelUpgradeInitTryAck_,
             ibcChannelUpgradeConfirmOpenTimeoutCancel_
         )
-    {}
+    {
+        _disableInitializers();
+    }
 
     function initialize() public initializer {
         __UUPSUpgradeable_init();
