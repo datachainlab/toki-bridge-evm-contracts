@@ -1219,9 +1219,9 @@ contract TransferPoolFeeCalculatorTest is Test {
         );
 
         assertEq(
-            feeInfo.lastKnownBalance,
-            expectedFeeInfo.lastKnownBalance,
-            string.concat(testCase, ": lastKnownBalance")
+            feeInfo.balanceDecrease,
+            expectedFeeInfo.balanceDecrease,
+            string.concat(testCase, ": balanceDecrease")
         );
     }
 

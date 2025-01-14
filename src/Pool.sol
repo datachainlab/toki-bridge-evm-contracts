@@ -399,17 +399,16 @@ contract Pool is
         if (feeInfo.eqReward > 0) {
             $._eqFeePool -= feeInfo.eqReward;
         }
-        // lastKnowBalnace calculated by fee.
-        feeInfo.lastKnownBalance = amountGD - feeInfo.lpFee + feeInfo.eqReward;
+        feeInfo.balanceDecrease = amountGD - feeInfo.lpFee + feeInfo.eqReward;
 
         // delta algorithm 1-5 lines
-        if (peerPoolInfo.balance < feeInfo.lastKnownBalance) {
+        if (peerPoolInfo.balance < feeInfo.balanceDecrease) {
             revert TokiInsufficientPoolLiquidity(
                 peerPoolInfo.balance,
-                feeInfo.lastKnownBalance
+                feeInfo.balanceDecrease
             );
         }
-        peerPoolInfo.balance = peerPoolInfo.balance - feeInfo.lastKnownBalance;
+        peerPoolInfo.balance = peerPoolInfo.balance - feeInfo.balanceDecrease;
 
         if (newLiquidity) {
             $._deltaCredit = $._deltaCredit + amountGD + feeInfo.eqReward;
@@ -464,9 +463,7 @@ contract Pool is
                 peerChainId,
                 peerPoolId
             );
-            peerPoolInfo.lastKnownBalance =
-                peerPoolInfo.lastKnownBalance -
-                feeInfo.lastKnownBalance;
+            peerPoolInfo.lastKnownBalance -= feeInfo.balanceDecrease;
         }
 
         // user receives the amount + the srcReward

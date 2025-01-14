@@ -588,11 +588,7 @@ contract BridgeTest is Test {
             assertEq(_fee.lpFee, 0, "callRecv: fee.lpFee");
             assertEq(_fee.eqFee, 0, "callRecv: fee.eqFee");
             assertEq(_fee.eqReward, 0, "callRecv: fee.eqReward");
-            assertEq(
-                _fee.lastKnownBalance,
-                0,
-                "callRecv: fee.lastKnownBalance"
-            );
+            assertEq(_fee.balanceDecrease, 0, "callRecv: fee.balanceDecrease");
         }
     }
 

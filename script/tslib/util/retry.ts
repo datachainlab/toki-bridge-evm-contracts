@@ -17,7 +17,7 @@ const make_fee_info = (a: any[]): tt.ITransferPoolFeeCalculator.FeeInfoStruct =>
         'lpFee': BigInt(a[2]),
         'eqFee': BigInt(a[3]),
         'eqReward': BigInt(a[4]),
-        'lastKnownBalance': BigInt(a[5]),
+        'balanceDecrease': BigInt(a[5]),
     };
 }
 

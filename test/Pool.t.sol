@@ -514,9 +514,9 @@ contract PoolTest is PoolTestDecimals, Test {
             assertEq(f.eqFee, 0, "f.eqFee");
             assertEq(f.eqReward, 0, "f.eqReward");
             assertEq(
-                f.lastKnownBalance,
+                f.balanceDecrease,
                 _amountGD - f.lpFee + f.eqReward,
-                "f.lastKnownBalance"
+                "f.balaanceDecrease"
             );
 
             ERC20(p.token()).transfer(address(p), _amountLD);
@@ -536,7 +536,7 @@ contract PoolTest is PoolTestDecimals, Test {
             assertEq(peerPoolInfo.weight, 100, "weight");
             assertEq(
                 peerPoolInfo.balance,
-                LDToGD(defaultMintAmountLd / 2) - f.lastKnownBalance,
+                LDToGD(defaultMintAmountLd / 2) - f.balanceDecrease,
                 "balance"
             );
             assertEq(
@@ -597,7 +597,7 @@ contract PoolTest is PoolTestDecimals, Test {
                     lpFee: 30_000,
                     eqFee: 30_000,
                     eqReward: 0,
-                    lastKnownBalance: 999_970_000
+                    balanceDecrease: 999_970_000
                 });
 
             (uint256 ret, bool isTransferred) = p.recv(
@@ -634,7 +634,7 @@ contract PoolTest is PoolTestDecimals, Test {
             );
             assertEq(
                 peerPoolInfo.lastKnownBalance,
-                LDToGD(defaultMintAmountLd / 2) - f.lastKnownBalance,
+                LDToGD(defaultMintAmountLd / 2) - f.balanceDecrease,
                 "lastKnownBalance"
             );
             assertEq(peerPoolInfo.credits, 0, "credits");
@@ -662,7 +662,7 @@ contract PoolTest is PoolTestDecimals, Test {
                 lpFee: 30_000,
                 eqFee: 30_000,
                 eqReward: 0,
-                lastKnownBalance: 999_970_000
+                balanceDecrease: 999_970_000
             });
 
         (, bool isTransferred) = p.recv(chainIds[1], poolIds[1], _to, f, true);
@@ -689,8 +689,9 @@ contract PoolTest is PoolTestDecimals, Test {
         assertEq(
             peerPoolInfo.lastKnownBalance,
             LDToGD(defaultMintAmountLd / 2) -
-                f.lastKnownBalance -
-                f.lastKnownBalance,
+                f.balanceDecrease -
+                // TODO why
+                f.balanceDecrease,
             "lastKnownBalance"
         );
         assertEq(peerPoolInfo.credits, 0, "credits");
@@ -707,7 +708,7 @@ contract PoolTest is PoolTestDecimals, Test {
                 lpFee: 30_000,
                 eqFee: 30_000,
                 eqReward: 0,
-                lastKnownBalance: 999_970_000
+                balanceDecrease: 999_970_000
             });
 
         uint256 currentBalance = IERC20(p.token()).balanceOf(address(p));
@@ -732,7 +733,7 @@ contract PoolTest is PoolTestDecimals, Test {
         );
         assertEq(
             peerPoolInfo.lastKnownBalance,
-            LDToGD(defaultMintAmountLd / 2) - f.lastKnownBalance,
+            LDToGD(defaultMintAmountLd / 2) - f.balanceDecrease,
             "lastKnownBalance"
         );
         assertEq(peerPoolInfo.credits, 0, "credits");
@@ -766,7 +767,7 @@ contract PoolTest is PoolTestDecimals, Test {
                 assertEq(f.lpFee, 1000, "f.lpFee");
                 assertEq(f.eqFee, 0, "f.eqFee");
                 assertEq(f.eqReward, 0, "f.eqReward");
-                assertEq(f.lastKnownBalance, 9_999_000, "f.lastKnownBalance");
+                assertEq(f.balanceDecrease, 9_999_000, "f.balanceDecrease");
 
                 // save values after transfer
                 uint256 index = p.peerPoolInfoIndexSeek(
@@ -1586,7 +1587,7 @@ contract PoolTest is PoolTestDecimals, Test {
         assertEq(fee.lpFee, 1, "fee.lpFee");
         assertEq(fee.eqFee, 0, "fee.eqFee");
         assertEq(fee.eqReward, 0, "fee.eqReward");
-        assertEq(fee.lastKnownBalance, 0, "fee.lastKnownBalance");
+        assertEq(fee.balanceDecrease, 0, "fee.balanceDecrease");
     }
 
     function testCallDeltaInFullMode() public {
@@ -2155,7 +2156,7 @@ contract PoolTest is PoolTestDecimals, Test {
                     lpFee: 30_000,
                     eqFee: 30_000,
                     eqReward: 0,
-                    lastKnownBalance: 999_970_000
+                    balanceDecrease: 999_970_000
                 });
             p.recv(chainIds[j], poolIds[j], _to, f, true);
         }

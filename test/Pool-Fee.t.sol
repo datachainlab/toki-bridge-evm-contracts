@@ -52,7 +52,7 @@ contract MockTransferPoolFeeCalculatorWithFee is ITransferPoolFeeCalculator {
                 lpFee: (amountGD * lpFeeBps) / 10000,
                 eqFee: (amountGD * eqFeeBps) / 10000,
                 eqReward: 0,
-                lastKnownBalance: 0
+                balanceDecrease: 0
             });
     }
 
@@ -266,7 +266,7 @@ contract PoolTestAboutLastKnownBalance is PoolTestWithFeeCommon {
 
         // pool updates feeInfo.lastKnownBalance though calcFee() returns 0 for lastKnownBalance
         assertEq(
-            feeInfo.lastKnownBalance,
+            feeInfo.balanceDecrease,
             LDToGD((amountLD * (10000 - lpFeeBps)) / 10000)
         );
     }

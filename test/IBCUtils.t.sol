@@ -362,7 +362,7 @@ contract IBCUtilsTest is Test {
         assertEq(a.lpFee, b.lpFee);
         assertEq(a.eqFee, b.eqFee);
         assertEq(a.eqReward, b.eqReward);
-        assertEq(a.lastKnownBalance, b.lastKnownBalance);
+        assertEq(a.balanceDecrease, b.balanceDecrease);
     }
 
     function _assertCreditInfo(
