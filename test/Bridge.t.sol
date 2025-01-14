@@ -380,6 +380,26 @@ contract BridgeTest is Test {
         );
     }
 
+    function testTransferPoolFailWithEmptyRecipient() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiInvalidRecipientBytes.selector
+            )
+        );
+
+        bridge.transferPool{value: 1 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            100,
+            0,
+            new bytes(0),
+            0,
+            IBCUtils.ExternalInfo("", 0),
+            alice
+        );
+    }
+
     function testTransferPoolFailRefuelSrcCap() public {
         vm.chainId(SRC_CHAIN_ID);
         bridge.setRefuelSrcCap(SRC_CHANNEL, 999);
@@ -786,6 +806,10 @@ contract BridgeTest is Test {
     }
 
     function testWithdrawRemoteFailWithMaxToLengthValidation() public {
+        bytes memory to = LargeBytesGenerator.generateLargeBytes(
+            MAX_TO_LENGTH + 1
+        );
+
         vm.expectRevert(
             abi.encodeWithSelector(
                 ITokiErrors.TokiExceed.selector,
@@ -795,8 +819,22 @@ contract BridgeTest is Test {
             )
         );
 
-        bytes memory to = LargeBytesGenerator.generateLargeBytes(
-            MAX_TO_LENGTH + 1
+        bridge.withdrawRemote{value: 10_000 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            200,
+            1,
+            to,
+            alice
+        );
+    }
+
+    function testWithdrawRemoteFailWithEmptyRecipient() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiInvalidRecipientBytes.selector
+            )
         );
 
         bridge.withdrawRemote{value: 10_000 * DENOMI}(
@@ -805,7 +843,7 @@ contract BridgeTest is Test {
             1,
             200,
             1,
-            to,
+            new bytes(0),
             alice
         );
     }
@@ -955,18 +993,11 @@ contract BridgeTest is Test {
         );
     }
 
-    function testWithdrawLocalFailWithMaxToLengthValidation() public {
+    function testWithdrawLocalFailWithInvalidRecipientLength() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                ITokiErrors.TokiExceed.selector,
-                "to",
-                MAX_TO_LENGTH + 1,
-                MAX_TO_LENGTH
+                ITokiErrors.TokiInvalidRecipientBytes.selector
             )
-        );
-
-        bytes memory to = LargeBytesGenerator.generateLargeBytes(
-            MAX_TO_LENGTH + 1
         );
 
         bridge.withdrawLocal{value: 1 * DENOMI}(
@@ -974,7 +1005,7 @@ contract BridgeTest is Test {
             0,
             1,
             300,
-            to,
+            new bytes(1),
             alice
         );
     }

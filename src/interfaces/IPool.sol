@@ -489,6 +489,27 @@ interface IPool is IDecimalConvertible, IStaticFlowRateLimiter {
     ) external returns (uint256 amountGD);
 
     /**
+     * @dev Handles failure of recv
+     */
+    function handleRecvFailure(
+        uint256 peerChainId,
+        uint256 peerPoolId,
+        address to,
+        ITransferPoolFeeCalculator.FeeInfo memory feeInfo
+    ) external;
+
+    /**
+     * @dev Handles failure of withdrawConfirm
+     */
+    function handleWithdrawConfirmFailure(
+        uint256 peerChainId,
+        uint256 peerPoolId,
+        address to,
+        uint256 amountGD,
+        uint256 amountToMintGD
+    ) external;
+
+    /**
      * @dev Calculates the delta.
      * @param fullMode Indicates if the full mode should be used.
      * If true, even if each pool has an ideal balance, all deltaCredit will be consumed and proportionally distributed to each pool.

@@ -167,8 +167,9 @@ abstract contract BridgeBase is BridgeStore {
             amountLD = amountLD_;
             isTransferred = isTransferred_;
         } catch {
-            // Set isTransferred to false.
-            // Since it's already initialized as false, there's nothing to do here.
+            if (receiveOption.updateDelta) {
+                pool.handleRecvFailure(srcChainId, srcPoolId, to, fee);
+            }
         }
         if (isTransferred) {
             _outServiceCallCore(
@@ -282,8 +283,15 @@ abstract contract BridgeBase is BridgeStore {
         returns (bool isTransferred_) {
             isTransferred = isTransferred_;
         } catch {
-            // Set isTransferred to false.
-            // Since it's already initialized as false, there's nothing to do here.
+            if (receiveOption.updateDelta) {
+                pool.handleWithdrawConfirmFailure(
+                    srcChainId,
+                    withdrawCheckPoolId,
+                    to,
+                    amountGD,
+                    mintAmountGD
+                );
+            }
         }
 
         if (!isTransferred) {

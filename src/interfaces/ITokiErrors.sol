@@ -29,6 +29,7 @@ interface ITokiErrors {
 
     error TokiInvalidPacketType(uint8);
     error TokiInvalidRetryType(uint8);
+    error TokiInvalidRecipientBytes();
     error TokiNoRevertReceive();
     error TokiRetryExpired(uint256 expiryBlock);
     error TokiInvalidAppVersion(uint256 expected, uint256 actual);

@@ -2743,6 +2743,11 @@
       "type": "error"
     },
     {
+      "inputs": [],
+      "name": "TokiInvalidRecipientBytes",
+      "type": "error"
+    },
+    {
       "inputs": [
         {
           "internalType": "uint8",

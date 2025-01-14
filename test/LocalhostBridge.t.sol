@@ -15,6 +15,17 @@ import "../src/mocks/MockOuterService.sol";
 import "./LargeBytesGenerator.sol";
 
 contract LocalhostBridgeTest is LocalhostTestSetup {
+    struct RecvFailureData {
+        uint256 totalLiquidity;
+        uint256 eqFeePool;
+        uint256 feeBalance;
+        uint256 lastKnownBalance;
+    }
+
+    struct WithdrawConfirmFailureData {
+        uint256 lastKnownBalance;
+    }
+
     function setUp() public override {
         super.setUp();
     }
@@ -595,6 +606,303 @@ contract LocalhostBridgeTest is LocalhostTestSetup {
                 "6: Outer received token"
             );
         }
+    }
+
+    // lastKnownBalance should be updated
+    function testTransferPoolRevertsWhenRecipientIsInvalidBytes() public {
+        uint8 srcChainIndex = 0;
+        uint8 srcPoolIndex = 0;
+        LocalhostChain storage src = _chains[srcChainIndex];
+        LocalhostChainPool storage srcPool = src.pools[srcPoolIndex];
+        uint256 srcDenom = 10 ** srcPool.pool.localDecimals();
+
+        uint8 dstChainIndex = 1;
+        uint8 dstPoolIndex = 1;
+        LocalhostChain storage dst = _chains[dstChainIndex];
+        LocalhostChainPool storage dstPool = dst.pools[dstPoolIndex];
+        uint256 dstDenom = 10 ** dstPool.pool.localDecimals();
+
+        uint256 srcAmount = 1000 * srcDenom * 2;
+        uint256 dstDeposit = 1000 * dstDenom * 10;
+
+        // 1. fill native token and pooled token
+        {
+            vm.deal(_alice, 1 ether);
+            srcPool.erc20.mint(_alice, srcAmount);
+
+            assertEq(
+                srcAmount,
+                srcPool.erc20.balanceOf(_alice),
+                "1: Alice's token is filled"
+            );
+            assertEq(
+                0,
+                dstPool.erc20.balanceOf(address(0)),
+                "1: address(0) has no token"
+            );
+        }
+
+        // 2. start localhost IBC testing
+        vm.recordLogs();
+
+        // 3. increase known balance of src pool about dst pool
+        {
+            deposit(
+                dstChainIndex,
+                dstPoolIndex,
+                srcChainIndex,
+                srcPoolIndex,
+                dstDeposit,
+                _dead
+            );
+        }
+
+        // 4. call transferPool
+        RecvFailureData memory expected;
+        {
+            ITransferPoolFeeCalculator.FeeInfo memory feeInfo = calcTransferFee(
+                srcChainIndex,
+                srcPoolIndex,
+                dstChainIndex,
+                dstPoolIndex,
+                _alice,
+                srcAmount
+            );
+            assertGt(feeInfo.lpFee, 0, "4: lpFee should be positive");
+            assertGt(
+                feeInfo.protocolFee,
+                0,
+                "4: protocolFee should be positive"
+            );
+            expected.totalLiquidity =
+                dstPool.pool.totalLiquidity() +
+                feeInfo.lpFee;
+            expected.eqFeePool = dstPool.pool.eqFeePool() + feeInfo.eqFee;
+            expected.feeBalance =
+                dstPool.pool.feeBalance() +
+                feeInfo.protocolFee;
+            expected.lastKnownBalance =
+                dstPool
+                    .pool
+                    .getPeerPoolInfo(srcPool.chainId, srcPool.poolId)
+                    .lastKnownBalance -
+                (ldToGd(srcPool.pool, srcAmount) -
+                    feeInfo.lpFee +
+                    feeInfo.eqReward);
+        }
+        {
+            vm.startPrank(_alice);
+
+            srcPool.erc20.approve(address(src.bridge), srcAmount);
+            IBCUtils.ExternalInfo memory extInfo = IBCUtils.ExternalInfo("", 0);
+            vm.chainId(src.chainId);
+            src.bridge.transferPool{value: 1 ether}(
+                src.channelInfo.channel,
+                srcPool.poolId,
+                dstPool.poolId,
+                srcAmount,
+                0,
+                new bytes(1), // invalid
+                0,
+                extInfo,
+                _alice
+            );
+            vm.stopPrank();
+        }
+
+        // 5. Relay and check
+        {
+            // this indicates that an unrecoverable error occurred
+            vm.expectEmit(address(dst.bridge));
+            emit Bridge.Unrecoverable(src.chainId, 1);
+            (Packet memory packet, ) = relay(
+                MessageType._TYPE_TRANSFER_POOL,
+                src.channelInfo,
+                dst.chainId
+            );
+
+            vm.chainId(dst.chainId);
+            {
+                bytes memory payload = dst.bridge.revertReceive(
+                    src.chainId,
+                    packet.sequence
+                );
+                assertEq(
+                    0,
+                    payload.length,
+                    "6: retry data should not be exists"
+                );
+            }
+        }
+
+        // 6. handleRecvFailure check
+        assertEq(
+            expected.lastKnownBalance,
+            dstPool
+                .pool
+                .getPeerPoolInfo(srcPool.chainId, srcPool.poolId)
+                .lastKnownBalance,
+            "6: dst pool's last known balance should be updated"
+        );
+        assertEq(
+            expected.totalLiquidity,
+            dstPool.pool.totalLiquidity(),
+            "6: dst pool's total liquidity"
+        );
+        assertEq(
+            expected.eqFeePool,
+            dstPool.pool.eqFeePool(),
+            "6: dst pool's eq fee pool"
+        );
+        assertEq(
+            expected.feeBalance,
+            dstPool.pool.feeBalance(),
+            "6: dst pool's fee balance"
+        );
+    }
+
+    function testWithdrawLocalRevertsWhenRecipientIsZeroAddress() public {
+        vm.recordLogs();
+
+        LocalhostChain storage pro = _chains[0];
+        uint256 proPoolIndex = 0;
+        uint256 proPoolId = pro.pools[proPoolIndex].poolId;
+
+        LocalhostChain storage rea = _chains[1];
+        uint256 reaPoolId = _chains[1].pools[1].poolId;
+
+        pro.pools[proPoolIndex].erc20.mint(address(this), 100);
+        vm.chainId(pro.chainId);
+        pro.bridge.deposit(proPoolId, 100, _alice);
+        pro.bridge.sendCredit{value: 1 * 1e18}(
+            pro.channelInfo.channel,
+            0,
+            1,
+            _alice
+        );
+
+        relay(MessageType._TYPE_CREDIT, pro.channelInfo, rea.chainId);
+
+        // initial state
+        {
+            uint256[3] memory aliceBalance = [
+                pro.pools[proPoolIndex].erc20.balanceOf(_alice),
+                pro.pools[proPoolIndex].pool.balanceOf(_alice),
+                pro.token.token.balanceOf(_alice)
+            ];
+            assertEq(0, aliceBalance[0], "0: alice has no token");
+            assertEq(100, aliceBalance[1], "0: alice has 100 liquidity");
+
+            IPool.PeerPoolInfo[][] memory rev = getReversePeerPoolInfos(
+                pro.chainId,
+                proPoolId
+            );
+            assertEq(33, rev[1][1].balance, "0: (1,1)'s (0,0) balance");
+        }
+
+        // run as alice
+        vm.deal(_alice, 1 ether);
+        vm.startPrank(_alice);
+
+        // Call withdrawLocal.
+        WithdrawConfirmFailureData memory expected;
+        {
+            expected.lastKnownBalance =
+                pro
+                    .pools[proPoolIndex]
+                    .pool
+                    .getPeerPoolInfo(rea.chainId, reaPoolId)
+                    .lastKnownBalance -
+                33;
+        }
+        vm.chainId(pro.chainId);
+        pro.bridge.withdrawLocal{value: 1 * 1e18}(
+            pro.channelInfo.channel,
+            proPoolId,
+            reaPoolId,
+            100,
+            IBCUtils.encodeAddress(address(0)),
+            _alice
+        );
+        {
+            uint256[3] memory aliceBalance = [
+                pro.pools[proPoolIndex].erc20.balanceOf(_alice),
+                pro.pools[proPoolIndex].pool.balanceOf(_alice),
+                pro.token.token.balanceOf(_alice)
+            ];
+            assertEq(0, aliceBalance[0], "1: alice has no token");
+            assertEq(0, aliceBalance[1], "1: alice has 0 liquidity");
+        }
+
+        (, Vm.Log[] memory withdrawLogs) = relay(
+            MessageType._TYPE_WITHDRAW,
+            pro.channelInfo,
+            rea.chainId
+        );
+
+        {
+            uint256[3] memory aliceBalance = [
+                pro.pools[proPoolIndex].erc20.balanceOf(_alice),
+                pro.pools[proPoolIndex].pool.balanceOf(_alice),
+                pro.token.token.balanceOf(_alice)
+            ];
+            assertEq(0, aliceBalance[0], "2: alice has no token");
+            assertEq(0, aliceBalance[1], "2: alice has 0 liquidity");
+
+            IPool.PeerPoolInfo[][] memory rev = getReversePeerPoolInfos(
+                pro.chainId,
+                proPoolId
+            );
+            assertEq(
+                0,
+                rev[1][1].balance,
+                "2: (1,1)'s (0,0) balance is decreased to 0"
+            );
+        }
+
+        {
+            (Packet memory packet, ) = relay(
+                MessageType._TYPE_WITHDRAW_CHECK,
+                rea.channelInfo,
+                pro.chainId,
+                withdrawLogs
+            );
+
+            vm.chainId(pro.chainId);
+            {
+                bytes memory payload = pro.bridge.revertReceive(
+                    rea.chainId,
+                    packet.sequence
+                );
+                assertGt(payload.length, 0, "3: retry data should be exists");
+            }
+        }
+
+        {
+            uint256[3] memory aliceBalance = [
+                pro.pools[proPoolIndex].erc20.balanceOf(_alice),
+                pro.pools[proPoolIndex].pool.balanceOf(_alice),
+                pro.token.token.balanceOf(_alice)
+            ];
+            // not re-minted because recipient is zero address
+            assertEq(0, aliceBalance[0], "4: alice has 0 token");
+            // refunded token is burned
+            assertEq(0, aliceBalance[1], "4: alice refunded 0 liquidity");
+        }
+        {
+            uint256 lastKnownBalance = pro
+                .pools[proPoolIndex]
+                .pool
+                .getPeerPoolInfo(rea.chainId, reaPoolId)
+                .lastKnownBalance;
+            assertEq(
+                expected.lastKnownBalance,
+                lastKnownBalance,
+                "4: last known balance should be updated"
+            );
+        }
+
+        vm.stopPrank();
     }
 
     function getReversePeerPoolInfos(
