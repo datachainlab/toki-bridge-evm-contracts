@@ -201,17 +201,15 @@ contract TransferPoolFeeCalculator is
         return protocolFee;
     }
 
+    /**
+     * @dev Calculate the drift protocol fee, which is the fee charged when the source pool price is lower than the destination pool price.
+     */
     function getDriftProtocolFee(
         uint256 srcPoolId,
         uint256 dstPoolId,
         uint256 amountGD
     ) public view returns (uint256) {
         if (srcPoolId == dstPoolId) {
-            return 0;
-        }
-        IStableTokenPriceOracle.PriceDeviationStatus srcStatus = stableTokenPriceOracle
-                .getCurrentPriceDeviationStatus(srcPoolId);
-        if (srcStatus == IStableTokenPriceOracle.PriceDeviationStatus.Normal) {
             return 0;
         }
         (uint256 srcPrice, uint8 srcDecimals) = stableTokenPriceOracle

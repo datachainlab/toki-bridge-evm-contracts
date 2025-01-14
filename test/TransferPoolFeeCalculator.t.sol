@@ -637,13 +637,14 @@ contract TransferPoolFeeCalculatorTest is Test {
             10000,
             0
         );
+        // Normal status is same as Drift status when src pool price < dst pool price
         _testGetDriftProtocolFee(
             "testGetDriftProtocolFee-20: normal status",
             IStableTokenPriceOracle.PriceDeviationStatus.Normal,
             1,
             2,
             10000,
-            0
+            1818 // (10000 * (11 - 9)) / 11
         );
         _testGetDriftProtocolFee(
             "testGetDriftProtocolFee-30: drift status, src pool price < dst pool price",
