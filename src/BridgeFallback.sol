@@ -197,7 +197,8 @@ contract BridgeFallback is
             uint256 actualRefuel = (p.refuelAmount < $.refuelDstCap)
                 ? p.refuelAmount
                 : $.refuelDstCap;
-            if (payable(p.to).send(actualRefuel)) {
+            (bool success, ) = payable(p.to).call{value: actualRefuel}("");
+            if (success) {
                 if (actualRefuel != p.refuelAmount) {
                     emit RefuelDstCapped(
                         srcChainId,

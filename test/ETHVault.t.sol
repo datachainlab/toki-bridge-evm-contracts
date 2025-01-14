@@ -16,6 +16,28 @@ contract UpgradedETHVault is ETHVault {
     }
 }
 
+contract Reentrant {
+    ETHVault public ethVault;
+    constructor(ETHVault _ethVault) {
+        ethVault = _ethVault;
+    }
+
+    receive() external payable {
+        uint256 balance = ethVault.balanceOf(address(this));
+        if (balance > 0 && ethVault.totalSupply() >= balance) {
+            ethVault.withdraw(balance);
+        }
+    }
+
+    function deposit() public payable {
+        ethVault.deposit{value: msg.value}();
+    }
+
+    function withdraw(uint256 amount) public {
+        ethVault.withdraw(amount);
+    }
+}
+
 contract ETHVaultTest is Test {
     ETHVault public ethVault;
     address public alice = makeAddr("alice");
@@ -79,6 +101,24 @@ contract ETHVaultTest is Test {
         assertEq(alice.balance, 1);
         assertEq(ethVault.balanceOf(alice), 0);
         assertEq(ethVault.totalSupply(), 0);
+    }
+
+    function testWithdrawPreventReentrant() public {
+        vm.deal(alice, 100 wei);
+        vm.prank(alice);
+        ethVault.deposit{value: 100 wei}();
+
+        Reentrant reentrant = new Reentrant(ethVault);
+        reentrant.deposit{value: 10 wei}();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiNativeTransferIsFailed.selector,
+                address(reentrant),
+                6 wei
+            )
+        );
+        reentrant.withdraw(6 wei);
     }
 
     function testWithdrawRevertsWhenSenderIsZeroAddress() public {

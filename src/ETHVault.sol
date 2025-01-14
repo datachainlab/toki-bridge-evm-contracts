@@ -4,14 +4,18 @@ pragma solidity ^0.8.13;
 import {IETHVault} from "./interfaces/IETHVault.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/ITokiErrors.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardTransientUpgradeable.sol";
 
 contract ETHVault is
+    ITokiErrors,
     IETHVault,
     UUPSUpgradeable,
     OwnableUpgradeable,
+    ReentrancyGuardTransientUpgradeable,
     ERC20Upgradeable
 {
     struct ETHVaultStorage {
@@ -33,6 +37,7 @@ contract ETHVault is
 
     function initialize() public initializer {
         __ERC20_init("TOKI wrapped ETH", "tokiETH");
+        __ReentrancyGuardTransient_init();
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
     }
@@ -41,10 +46,13 @@ contract ETHVault is
         deposit();
     }
 
-    function withdraw(uint256 amount) external {
+    function withdraw(uint256 amount) external nonReentrant {
         _burn(msg.sender, amount);
-        payable(msg.sender).transfer(amount);
         emit Withdraw(msg.sender, amount);
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) {
+            revert TokiNativeTransferIsFailed(msg.sender, amount);
+        }
     }
 
     function setNoUnwrapTo(address addr) external onlyOwner {
@@ -57,7 +65,7 @@ contract ETHVault is
         emit ResetNoUnwrapTo(addr);
     }
 
-    function deposit() public payable {
+    function deposit() public payable nonReentrant {
         _mint(msg.sender, msg.value);
         emit Deposit(msg.sender, msg.value);
     }
@@ -78,8 +86,11 @@ contract ETHVault is
         if (isNonZeroAddresses && !isNoUnwrapTo) {
             // The following is equivalent to burn.
             super._update(from, address(0), value);
-            payable(to).transfer(value);
             emit TransferNative(from, to, value);
+            (bool success, ) = payable(to).call{value: value}("");
+            if (!success) {
+                revert TokiNativeTransferIsFailed(to, value);
+            }
         } else {
             super._update(from, to, value);
         }

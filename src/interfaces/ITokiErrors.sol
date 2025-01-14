@@ -53,6 +53,7 @@ interface ITokiErrors {
 
     error TokiTransferIsStop();
     error TokiTransferIsFailed(address token, address to, uint256 value);
+    error TokiNativeTransferIsFailed(address to, uint256 value);
     error TokiPeerPoolIsNotReady(uint256 peerChainId, uint256 peerPoolId);
     error TokiSlippageTooHigh(
         uint256 amountGD,

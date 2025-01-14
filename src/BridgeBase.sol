@@ -337,10 +337,6 @@ abstract contract BridgeBase is BridgeStore {
                 );
             }
             address payable payableTo = payable(to);
-            // Note about slither-disable:
-            //  Reentrancy is prevented as ancestor functions can only be called
-            // by IBCHandler or are guarded by the nonReentrant modifier.
-            // slither-disable-next-line arbitrary-send-eth
             (bool success, ) = payableTo.call{value: actualRefuel}("");
             if (!success) {
                 errorFlag += 1;
