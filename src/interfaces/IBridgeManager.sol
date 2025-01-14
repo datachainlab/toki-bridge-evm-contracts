@@ -91,6 +91,12 @@ interface IBridgeManager {
     );
 
     /**
+     * @dev Emitted by refill.
+     * @param amount The amount of native asset.
+     */
+    event Refill(uint256 amount);
+
+    /**
      * @dev Emitted by draw.
      * @param amount The amount of native asset.
      * @param to The address to draw to.
@@ -186,6 +192,11 @@ interface IBridgeManager {
         uint64 withdrawBlocks,
         uint64 externalBlocks
     ) external;
+
+    /**
+     * @dev transfer native token to Bridge to work its service.
+     */
+    function refill() external payable;
 
     /**
      * @dev Draws the native asset.

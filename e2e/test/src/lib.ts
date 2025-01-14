@@ -488,6 +488,19 @@ export const fillNativeToken = async (
   return chain.wallet.sendTransaction(tx);
 };
 
+export const fillBridgeNativeToken = async (
+  chain: Chain,
+  bridge: toki.tt.IBridge,
+  num_eth: number,
+): Promise<ethers.TransactionResponse> => {
+  const goal = ethers.parseUnits(`${num_eth}`, "ether");
+  const current = await chain.provider.getBalance(await bridge.getAddress());
+  const value =  (goal <= current)
+    ? ethers.parseUnits("0", "ether")
+    : ethers.parseUnits(`${num_eth}`, "ether");
+  return bridge.refill({ value });
+};
+
 export const deposit = async (
   chains: Chain[],
   chIndex: number,

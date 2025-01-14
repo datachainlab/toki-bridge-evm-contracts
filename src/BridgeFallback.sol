@@ -41,8 +41,6 @@ contract BridgeFallback is
         PORT = port.toShortString();
     }
 
-    receive() external payable {}
-
     function callDelta(uint256 srcPoolId, bool fullMode) external {
         if (fullMode) {
             _checkRole(DEFAULT_ADMIN_ROLE);

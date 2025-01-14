@@ -111,7 +111,7 @@ export const testWithdrawLocal = async (chains: Chain[]) => {
 
   console.log("\n-- mint enough tokens to proact account -----------");
   await receipt(lib.fillNativeToken(proact.chain, proact.signerAddress, 5));
-  await receipt(lib.fillNativeToken(react.chain, await react.bridge.getAddress(), 1));
+  await receipt(lib.fillBridgeNativeToken(react.chain, react.bridge, 1));
   await receipt(proact.pooledToken.mint(proact.signerAddress, proact.amountLD));
   await getState(chains, proact, react, true);
 

@@ -418,6 +418,31 @@ contract BridgeFallbackTest is Test {
         bridgeFallback.setTokenEscrow(ZERO);
     }
 
+    function testReceiveFail() public {
+        uint256 amount = 10000 * ETHER;
+
+        vm.expectRevert();
+        payable(address(bridgeFallback)).call{value: amount}("");
+
+        vm.expectRevert();
+        payable(address(bridge)).call{value: amount}("");
+
+        // note that vm.deal succeeds.
+        vm.deal(address(bridge), amount);
+    }
+
+    function testRefill() public {
+        uint256 amount = 10000 * ETHER;
+        uint256 balanceBefore = address(bridge).balance;
+
+        vm.expectEmit(address(bridge));
+        emit IBridgeManager.Refill(amount);
+        bridgeFallback.refill{value: amount}();
+
+        uint256 balanceAfter = address(bridge).balance;
+        assertEq(balanceAfter, balanceBefore + amount);
+    }
+
     function testDrawFailWithZeroToBalance() public {
         vm.expectRevert(
             abi.encodeWithSelector(ITokiErrors.TokiZeroAddress.selector, "to")

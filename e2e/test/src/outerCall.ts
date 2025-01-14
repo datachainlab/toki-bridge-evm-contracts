@@ -211,7 +211,7 @@ const prepare = async (name: string, dstName: DstName, chains: Chain[]): Promise
   console.log("\n---- mint -----------");
   await receipt(lib.fillNativeToken(chains[0], aliceAddress, 0.3));
   // same as refuelAmount
-  await receipt(lib.fillNativeToken(chains[1], await chains[1].bridge.getAddress(), 0.001));
+  await receipt(lib.fillBridgeNativeToken(chains[1], chains[1].bridge, 0.001));
   await receipt(chains[0].pooldata[0].pooledToken.mint(aliceAddress, pooledTokenAmount));
   const alicePooledToken = chains[0].pooldata[0].pooledToken.connect(alice);
   await receipt(alicePooledToken.approve(await chains[0].bridge.getAddress(), pooledTokenAmount));
@@ -376,10 +376,6 @@ export const testOuterCall_fail_bridge_gas = async (chains: Chain[]) => {
   checkRetryRefuelCall(state, true);
 
   // recover dst.bridge's balance
-  await receipt(chains[1].wallet.sendTransaction({
-    to: await chains[1].bridge.getAddress(),
-    value: dstBalance,
-  }));
-
+  await receipt(chains[1].bridge.refill({ value: dstBalance }));
   console.log("success");
 }

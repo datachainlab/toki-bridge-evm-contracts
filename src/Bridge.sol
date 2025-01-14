@@ -120,8 +120,6 @@ contract Bridge is
         $.externalRetryBlocks = param.externalRetryBlocks;
     }
 
-    receive() external payable {}
-
     /* solhint-disable no-complex-fallback */
     /**
      * @dev To avoid Bridge deployment size limits and reduce user gas costs:

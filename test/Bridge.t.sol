@@ -250,6 +250,11 @@ contract BridgeTest is Test {
         erc20.approve(address(bridge), 1_000_000_000 * DENOMI);
     }
 
+    function testReceiveFail() public {
+        vm.expectRevert();
+        payable(address(bridge)).call{value: 100}("");
+    }
+
     // ====================== success test cases(router func) =============================
     function testDeposit() public {
         bridge.deposit(0, 100, alice);
@@ -1588,7 +1593,7 @@ contract BridgeTest is Test {
 
         // set force fail false out service & set bridge balance 2000
         outerService.setForceFail(false);
-        payable(address(bridge)).call{value: 2_000}("");
+        bridge.refill{value: 2_000}();
 
         // retry on post
         bridge.retryOnReceive(DST_CHANNEL, 1);
@@ -1618,7 +1623,7 @@ contract BridgeTest is Test {
         vm.chainId(DST_CHAIN_ID);
         // set force fail out service but set bridge balance 2000(for send)
         outerService.setForceFail(true);
-        payable(address(bridge)).call{value: 2_000}("");
+        bridge.refill{value: 2_000}();
 
         // make transfer pool payload
         bytes memory payload = IBCUtils.encodeTransferPool(
@@ -1759,7 +1764,7 @@ contract BridgeTest is Test {
         }
 
         // set bridge balance 2000
-        payable(address(bridge)).call{value: 2_000}("");
+        bridge.refill{value: 2_000}();
 
         // retry on post
         bridge.retryOnReceive(DST_CHANNEL, 1);
@@ -1786,7 +1791,7 @@ contract BridgeTest is Test {
         Packet memory packet = _buildPacketData(payload);
 
         // set bridge balance 2000
-        payable(address(bridge)).call{value: 2_000}("");
+        bridge.refill{value: 2_000}();
 
         vm.expectEmit(true, false, false, true);
         emit IBridgeManager.SetRefuelDstCap(39);

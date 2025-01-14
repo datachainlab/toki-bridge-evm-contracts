@@ -111,7 +111,7 @@ export const testTransferPool = async (chains: Chain[], poolIdxs: number[]) => {
 
   console.log("\n-- mint -----------");
   await receipt(lib.fillNativeToken(src.chain, src.signerAddress, 2));
-  await receipt(lib.fillNativeToken(dst.chain, await dst.bridge.getAddress(), 1));
+  await receipt(lib.fillBridgeNativeToken(dst.chain, dst.bridge, 1));
   await receipt(src.pooledToken.mint(src.signerAddress, src.amountLD));
   await dump(src, dst);
 
@@ -180,7 +180,7 @@ export const testTransferPoolForTokiETHFromBSCToETH = async (chains: Chain[]) =>
 
   console.log("\n-- mint -----------");
   await receipt(lib.fillNativeToken(src.chain, src.signerAddress, 2));
-  await receipt(lib.fillNativeToken(dst.chain, await dst.bridge.getAddress(), 1));
+  await receipt(lib.fillBridgeNativeToken(dst.chain, dst.bridge, 1));
   await receipt(src.pooledToken.mint(src.signerAddress, src.amountLD));
   await dump(src, dst);
 
@@ -247,7 +247,7 @@ export const testTransferPoolForTokiETHFromETHToBSC = async (chains: Chain[]) =>
 
   console.log("\n-- mint -----------");
   await receipt(lib.fillNativeToken(src.chain, src.signerAddress, 3));
-  await receipt(lib.fillNativeToken(dst.chain, await dst.bridge.getAddress(), 1));
+  await receipt(lib.fillBridgeNativeToken(dst.chain, dst.bridge, 1));
 
   await lib.depositETHVault(src.pooledToken.connect(src.signer), src.amountLD)
   await dump(src, dst);
