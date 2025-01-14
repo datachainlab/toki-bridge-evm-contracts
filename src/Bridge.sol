@@ -195,6 +195,8 @@ contract Bridge is
         if (refundTo == address(0x0)) {
             revert TokiZeroAddress("refundTo");
         }
+        _validateToLength(to);
+        _validatePayloadLength(externalInfo.payload);
 
         uint256 dstChainId = getChainId(srcChannel, true);
 
@@ -286,6 +288,8 @@ contract Bridge is
         if (refundTo == address(0x0)) {
             revert TokiZeroAddress("refundTo");
         }
+        _validateToLength(to);
+        _validatePayloadLength(externalInfo.payload);
 
         uint256 dstChainId = getChainId(srcChannel, true);
 
@@ -320,7 +324,7 @@ contract Bridge is
             message,
             refundTo,
             MessageType._TYPE_TRANSFER_TOKEN,
-            externalInfo.dstOuterGas,
+            externalInfo,
             refuelAmount
         );
     }
@@ -341,6 +345,7 @@ contract Bridge is
         if (refundTo == address(0x0)) {
             revert TokiZeroAddress("refundTo");
         }
+        _validateToLength(to);
 
         // call `withdrawRemote` and `sendCredit` on pool contract.
         // -> And call `receiveIBC` on dst side.
@@ -421,6 +426,7 @@ contract Bridge is
         if (refundTo == address(0x0)) {
             revert TokiZeroAddress("refundTo");
         }
+        _validateToLength(to);
 
         // call `withdrawLocal` and `sendCredit` on pool contract.
         // -> And call `withdrawCheck` on dst side.
@@ -445,7 +451,7 @@ contract Bridge is
             message,
             refundTo,
             MessageType._TYPE_WITHDRAW,
-            0,
+            IBCUtils.ExternalInfo("", 0),
             0
         );
     }
@@ -844,7 +850,7 @@ contract Bridge is
             message,
             p.refundTo,
             MessageType._TYPE_TRANSFER_POOL,
-            p.externalInfo.dstOuterGas,
+            p.externalInfo,
             p.refuelAmount
         );
     }
@@ -1014,6 +1020,18 @@ contract Bridge is
         //   It's ok because the aim of this statement is to round amountLD.
         // slither-disable-next-line divide-before-multiply
         return (amount / convertRate) * convertRate;
+    }
+
+    function _validateToLength(bytes calldata to) internal pure {
+        if (to.length > MAX_TO_LENGTH) {
+            revert TokiExceed("to", to.length, MAX_TO_LENGTH);
+        }
+    }
+
+    function _validatePayloadLength(bytes calldata payload) internal pure {
+        if (payload.length > MAX_PAYLOAD_LENGTH) {
+            revert TokiExceed("payload", payload.length, MAX_PAYLOAD_LENGTH);
+        }
     }
 
     function _isChannelUpgradeSelector(

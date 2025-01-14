@@ -33,6 +33,7 @@ import "@hyperledger-labs/yui-ibc-solidity/contracts/core/25-handler/OwnableIBCH
 import {IIBCModule, IIBCModuleInitializer} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/26-router/IIBCModule.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/Channel.sol";
 import "../src/mocks/MockPayable.sol";
+import "./LargeBytesGenerator.sol";
 
 contract Reentrant is ITokiOuterServiceReceiver {
     struct Result {
@@ -77,6 +78,10 @@ contract BridgeTest is Test {
     uint256 public constant DST_CHAIN_ID = 222;
     string public constant DST_CHANNEL = "channel-2";
     uint256 public constant INVALID_CHAIN_ID = 333;
+
+    // same values as in BridgeStore.sol
+    uint256 public constant MAX_TO_LENGTH = 1024; // 1KB
+    uint256 public constant MAX_PAYLOAD_LENGTH = 10 * 1024; // 1KB
 
     uint8 internal constant TYPE_TRANSFER_POOL = 1;
     uint8 internal constant TYPE_CREDIT = 2;
@@ -191,6 +196,7 @@ contract BridgeTest is Test {
                 address(tokenPriceOracle),
                 address(gasPriceOracle),
                 100_000,
+                700,
                 12000
             );
         }
@@ -457,6 +463,56 @@ contract BridgeTest is Test {
             0,
             IBCUtils.ExternalInfo("", 0),
             payable(address(mockPayable))
+        );
+    }
+
+    function testTransferPoolFailWithMaxToLengthValidation() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "to",
+                MAX_TO_LENGTH + 1,
+                MAX_TO_LENGTH
+            )
+        );
+        bytes memory to = LargeBytesGenerator.generateLargeBytes(
+            MAX_TO_LENGTH + 1
+        );
+        bridge.transferPool{value: 1 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            100,
+            0,
+            to,
+            0,
+            IBCUtils.ExternalInfo("", 0),
+            alice
+        );
+    }
+
+    function testTransferPoolFailWithMaxPayloadLengthValidation() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "payload",
+                MAX_PAYLOAD_LENGTH + 1,
+                MAX_PAYLOAD_LENGTH
+            )
+        );
+        bytes memory payload = LargeBytesGenerator.generateLargeBytes(
+            MAX_PAYLOAD_LENGTH + 1
+        );
+        bridge.transferPool{value: 1 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            100,
+            0,
+            bbob,
+            0,
+            IBCUtils.ExternalInfo(payload, 0),
+            alice
         );
     }
 
@@ -733,6 +789,31 @@ contract BridgeTest is Test {
         );
     }
 
+    function testWithdrawRemoteFailWithMaxToLengthValidation() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "to",
+                MAX_TO_LENGTH + 1,
+                MAX_TO_LENGTH
+            )
+        );
+
+        bytes memory to = LargeBytesGenerator.generateLargeBytes(
+            MAX_TO_LENGTH + 1
+        );
+
+        bridge.withdrawRemote{value: 10_000 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            200,
+            1,
+            to,
+            alice
+        );
+    }
+
     function testWithdrawRemoteInLedger() public {
         vm.chainId(SRC_CHAIN_ID);
         bridge.deposit(0, 100, alice);
@@ -874,6 +955,30 @@ contract BridgeTest is Test {
             1,
             0,
             bbob,
+            alice
+        );
+    }
+
+    function testWithdrawLocalFailWithMaxToLengthValidation() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "to",
+                MAX_TO_LENGTH + 1,
+                MAX_TO_LENGTH
+            )
+        );
+
+        bytes memory to = LargeBytesGenerator.generateLargeBytes(
+            MAX_TO_LENGTH + 1
+        );
+
+        bridge.withdrawLocal{value: 1 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            300,
+            to,
             alice
         );
     }
@@ -1146,13 +1251,11 @@ contract BridgeTest is Test {
         // clarify setup parameters
         assertEq(100_000, tokenPriceOracle.getLatestPrice(SRC_CHAIN_ID));
         assertEq(200_000, tokenPriceOracle.getLatestPrice(DST_CHAIN_ID));
-        assertEq(100, gasPriceOracle.getPrice(SRC_CHAIN_ID));
-        assertEq(111, gasPriceOracle.getPrice(DST_CHAIN_ID));
         assertEq(0, bridge.premiumBPS(DST_CHAIN_ID));
 
-        // (100 * 111 + 20000) * 200_000 / 100_000 = 31100 * 2 = 62200
-        uint256 ret = bridge.calcSrcNativeAmount(DST_CHAIN_ID, 100, 20000);
-        assertEq(ret, 62200);
+        // 20000 * 200_000 / 100_000 = 40_000
+        uint256 ret = bridge.calcSrcNativeAmount(DST_CHAIN_ID, 20000);
+        assertEq(ret, 40000);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -1160,7 +1263,7 @@ contract BridgeTest is Test {
                 "priceFeedAddress"
             )
         );
-        bridge.calcSrcNativeAmount(INVALID_CHAIN_ID, 100, 0);
+        bridge.calcSrcNativeAmount(INVALID_CHAIN_ID, 0);
     }
 
     function testGetPool() public {

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "../interfaces/IStableTokenPriceOracle.sol";
+import "../library/IBCUtils.sol";
 
 interface IRelayerFeeCalculator {
     struct RelayerFee {
@@ -18,7 +19,8 @@ interface IRelayerFeeCalculator {
 
     function calcFee(
         uint8 messageType,
-        uint256 dstChainId
+        uint256 dstChainId,
+        IBCUtils.ExternalInfo memory externalInfo
     ) external view returns (RelayerFee memory relayerFee);
 
     function getGasPrice(

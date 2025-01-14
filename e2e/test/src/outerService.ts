@@ -316,7 +316,7 @@ export const testOuterService_fail_outOfGas = async (chains: Chain[]) => {
   dump(state0);
   const tt = await transferPool(chains, pre, {
     payload: new Uint8Array([39,40,41]),
-    dstOuterGas: ethers.parseUnits("0", "ether"),
+    dstOuterGas: ethers.parseUnits("1", "wei"),
   });
   console.log("seq=", tt.seq);
 

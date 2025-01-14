@@ -175,8 +175,8 @@ const prepare = async (name: string, dstName: DstName, chains: Chain[]): Promise
   const refuelAmount = ethers.parseUnits("0.001", "ether");
   const txValue = ethers.parseUnits("0.15", "ether");
 
-  const relayerFee = await lib.calcRelayerFee(chains[0], chains[1], lib.FUNCTION_TYPE.TransferPool);
-  const srcNativeAmount = await lib.calcSrcNativeAmount(chains[0], chains[1], BigInt(0), refuelAmount);
+  const relayerFee = await lib.calcRelayerFee(chains[0], chains[1], lib.FUNCTION_TYPE.TransferPool, new Uint8Array(), 0);
+  const srcNativeAmount = await lib.calcSrcNativeAmount(chains[0], chains[1], refuelAmount);
   if (txValue < relayerFee + srcNativeAmount) {
     throw new Error(`txValue should at least be >= relayerFee + srcNativeAmount: ${txValue} < ${relayerFee} + ${srcNativeAmount}`);
   }

@@ -9,7 +9,7 @@ import "./MessageType.sol";
 library IBCUtils {
     struct ExternalInfo {
         bytes payload;
-        uint256 dstOuterGas;
+        uint256 dstOuterGas; // in gas
     }
 
     struct SendCreditPayload {

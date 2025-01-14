@@ -231,6 +231,7 @@ export type DeployBridgeParametersBase = {
   nativeTokenPriceFeed: DeployPriceFeedParameters,
   nativeTokenPriceFeedValidityPeriodSec: number,
   relayerFeeGasUsed_BN: bigint,
+  relayerFeeGasPerPayloadLength_BN: bigint,
   relayerFeePremiumBPS_BN: bigint,
   receiveRetryBlock: number,
   withdrawRetryBlock: number,
@@ -272,6 +273,7 @@ export async function deployBridge(
     await tokenPriceOracle.getAddress(),
     await gasPriceOracle.getAddress(),
     p.relayerFeeGasUsed_BN,
+    p.relayerFeeGasPerPayloadLength_BN,
     p.relayerFeePremiumBPS_BN,
   ]);
 

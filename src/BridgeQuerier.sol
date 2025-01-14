@@ -7,7 +7,6 @@ import "./interfaces/IBridgeQuerier.sol";
 contract BridgeQuerier is BridgeBase, IBridgeQuerier {
     function calcSrcNativeAmount(
         uint256 dstChainId,
-        uint256 dstGas,
         uint256 dstNativeAmount
     ) external view returns (uint256) {
         BridgeStorage storage $ = getBridgeStorage();
@@ -17,18 +16,15 @@ contract BridgeQuerier is BridgeBase, IBridgeQuerier {
         (uint256 dstTokenPrice, uint8 dstTokenDecimals) = $
             .tokenPriceOracle
             .getLatestPriceAndDecimals(dstChainId);
-        uint256 dstGasPrice = $.relayerFeeCalculator.getGasPrice(dstChainId);
         uint256 riskBPS = $.premiumBPS[dstChainId];
 
         return
             _calcSrcNativeAmount(
-                dstGas,
                 dstNativeAmount,
                 srcTokenPrice,
                 srcTokenDecimals,
                 dstTokenPrice,
                 dstTokenDecimals,
-                dstGasPrice,
                 riskBPS
             );
     }

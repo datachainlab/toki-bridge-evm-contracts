@@ -81,7 +81,7 @@ contract BridgeFallback is
             message,
             refundTo,
             MessageType._TYPE_CREDIT,
-            0,
+            IBCUtils.ExternalInfo("", 0),
             0
         );
     }

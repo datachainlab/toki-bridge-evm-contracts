@@ -235,8 +235,9 @@ contract LocalhostTestSetup is LocalhostTest {
                 t.price.relayerFeeCalculator = new RelayerFeeCalculator(
                     address(t.price.tokenPriceOracle),
                     address(t.price.gasPriceOracle),
-                    100_000, //gasUsed
-                    12000 //premiumBPS
+                    100_000, // gasUsed
+                    700, // gasPerPayloadLength
+                    12000 // premiumBPS
                 );
             }
 
@@ -433,7 +434,11 @@ contract LocalhostTestSetup is LocalhostTest {
         uint256 relayerFee = src
             .price
             .relayerFeeCalculator
-            .calcFee(MessageType._TYPE_CREDIT, dst.chainId)
+            .calcFee(
+                MessageType._TYPE_CREDIT,
+                dst.chainId,
+                IBCUtils.ExternalInfo("", 0)
+            )
             .fee;
 
         srcPool.erc20.mint(_dead, amount);

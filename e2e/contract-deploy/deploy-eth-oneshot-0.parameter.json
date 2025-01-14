@@ -13,6 +13,7 @@
     },
     "nativeTokenPriceFeedValidityPeriodSec": 21600,
     "relayerFeeGasUsed_BN": "250000",
+    "relayerFeeGasPerPayloadLength_BN": "700",
     "relayerFeePremiumBPS_BN": "10500",
     "receiveRetryBlock": 100800,
     "withdrawRetryBlock": 100800,

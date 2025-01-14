@@ -74,7 +74,7 @@ abstract contract BridgeBase is BridgeStore {
         bytes memory message,
         address payable refundTo,
         uint8 messageType,
-        uint256 dstOuterGas, // in gas
+        IBCUtils.ExternalInfo memory externalInfo,
         uint256 dstRefuelAmount // in wei
     ) internal {
         _send(srcChannel, message);
@@ -82,31 +82,29 @@ abstract contract BridgeBase is BridgeStore {
         BridgeStorage storage $ = getBridgeStorage();
         IRelayerFeeCalculator.RelayerFee memory relayerFee = $
             .relayerFeeCalculator
-            .calcFee(messageType, dstChainId);
-        uint256 useNativeAsset = 0;
-        if (dstOuterGas > 0 || dstRefuelAmount > 0) {
+            .calcFee(messageType, dstChainId, externalInfo);
+        if (externalInfo.payload.length > 0 && externalInfo.dstOuterGas == 0) {
+            revert TokiZeroAmount("dstOuterGas");
+        }
+        uint256 refuelFee = 0;
+        if (dstRefuelAmount > 0) {
             uint256 riskBPS = $.premiumBPS[dstChainId];
-            useNativeAsset = _calcSrcNativeAmount(
-                dstOuterGas,
+            refuelFee = _calcSrcNativeAmount(
                 dstRefuelAmount,
                 relayerFee.srcTokenPrice,
                 relayerFee.srcTokenDecimals,
                 relayerFee.dstTokenPrice,
                 relayerFee.dstTokenDecimals,
-                relayerFee.dstGasPrice,
                 riskBPS
             );
         }
-        _refund(refundTo, relayerFee.fee, useNativeAsset);
+        _refund(refundTo, relayerFee.fee + refuelFee);
     }
 
     function _refund(
         address payable refundTo,
-        uint256 relayerFee,
-        uint256 useNativeAsset
+        uint256 totalNativeFee
     ) internal {
-        uint256 totalNativeFee = relayerFee + useNativeAsset;
-
         // assert the user has attached enough native token for this address
         if (totalNativeFee > msg.value) {
             revert TokiNotEnoughNativeFee(totalNativeFee, msg.value);
@@ -425,13 +423,11 @@ abstract contract BridgeBase is BridgeStore {
     }
 
     function _calcSrcNativeAmount(
-        uint256 dstGas, // [gas]
         uint256 dstTokenAmount, // [dst wei]
         uint256 srcTokenPrice,
         uint256 srcTokenDecimals,
         uint256 dstTokenPrice,
         uint256 dstTokenDecimals,
-        uint256 dstGasPrice,
         uint256 riskBPS
     ) internal pure returns (uint256) {
         if (srcTokenPrice == 0) {
@@ -444,13 +440,9 @@ abstract contract BridgeBase is BridgeStore {
                 ? (10 ** (srcTokenDecimals - dstTokenDecimals), uint256(1))
                 : (uint256(1), 10 ** (dstTokenDecimals - srcTokenDecimals));
 
-        // srcWei = dstWei[dstWei] * dstPrice[usd/dstWei] / srcPrice[usd/srcWei]* riskPremium[bps]
-        uint256 dstWei = dstGas * dstGasPrice + dstTokenAmount;
+        // srcTokenAmount[srcWei] = dstTokenAmount[dstWei] * dstPrice[usd/dstWei] / srcPrice[usd/srcWei] * riskPremiumBPS
         return
-            (dstWei *
-                dstTokenPrice *
-                decimalRatioNumerator *
-                (RISK_BPS + riskBPS)) /
+            (dstTokenAmount * dstTokenPrice * decimalRatioNumerator * (RISK_BPS + riskBPS)) /
             (srcTokenPrice * decimalRatioDenominator * RISK_BPS);
     }
 }

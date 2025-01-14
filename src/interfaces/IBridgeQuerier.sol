@@ -17,13 +17,11 @@ interface IBridgeQuerier {
      * @dev Calculates the source native amount for a given destination chain ID and destination native amount.
      * This calculation takes into account the risk premium.
      * @param dstChainId The destination chain ID.
-     * @param dstGas The gas to use.
      * @param dstNativeAmount The destination native amount.
      * @return The source native amount.
      */
     function calcSrcNativeAmount(
         uint256 dstChainId,
-        uint256 dstGas,
         uint256 dstNativeAmount
     ) external view returns (uint256);
 

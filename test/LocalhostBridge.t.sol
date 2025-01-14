@@ -11,6 +11,8 @@ import "../src/library/MessageType.sol";
 import "../src/library/IBCUtils.sol";
 import "../src/interfaces/IPool.sol";
 import "../src/Bridge.sol";
+import "../src/mocks/MockOuterService.sol";
+import "./LargeBytesGenerator.sol";
 
 contract LocalhostBridgeTest is LocalhostTestSetup {
     function setUp() public override {
@@ -467,6 +469,130 @@ contract LocalhostBridgeTest is LocalhostTestSetup {
                 0,
                 dstPool.erc20.balanceOf(address(0)),
                 "6: address(0) has not received token yet"
+            );
+        }
+    }
+
+    // dstOutGas is too low to call outer service
+    function testTransferPoolRevertsWhenOutOfGas() public {
+        uint8 srcChainIndex = 0;
+        uint8 srcPoolIndex = 0;
+        LocalhostChain storage src = _chains[srcChainIndex];
+        LocalhostChainPool storage srcPool = src.pools[srcPoolIndex];
+        uint256 srcDenom = 10 ** srcPool.pool.localDecimals();
+
+        uint8 dstChainIndex = 1;
+        uint8 dstPoolIndex = 1;
+        LocalhostChain storage dst = _chains[dstChainIndex];
+        LocalhostChainPool storage dstPool = dst.pools[dstPoolIndex];
+        uint256 dstDenom = 10 ** dstPool.pool.localDecimals();
+
+        uint256 srcAmount = 1000 * srcDenom * 2;
+        uint256 dstDeposit = 1000 * dstDenom * 10;
+
+        vm.chainId(dst.chainId);
+        MockOuterService dstOuter = new MockOuterService(dst.channelInfo.port);
+        dstOuter.setUsesHighGas(true);
+
+        vm.chainId(src.chainId);
+
+        // 1. fill native token and pooled token
+        {
+            vm.deal(_alice, 1 ether);
+            srcPool.erc20.mint(_alice, srcAmount);
+
+            assertEq(
+                srcAmount,
+                srcPool.erc20.balanceOf(_alice),
+                "1: Alice's token is filled"
+            );
+            assertEq(0, dstPool.erc20.balanceOf(_bob), "1: Bob has no token");
+        }
+
+        // 2. start localhost IBC testing
+        vm.recordLogs();
+
+        // 3. increase known balance of src pool about dst pool
+        {
+            deposit(
+                dstChainIndex,
+                dstPoolIndex,
+                srcChainIndex,
+                srcPoolIndex,
+                dstDeposit,
+                _dead
+            );
+        }
+
+        // 4. call transferPool
+        uint256 dstAmount;
+        {
+            ITransferPoolFeeCalculator.FeeInfo memory feeInfo = calcTransferFee(
+                srcChainIndex,
+                srcPoolIndex,
+                dstChainIndex,
+                dstPoolIndex,
+                _alice,
+                srcAmount
+            );
+            dstAmount = gdToLd(dstPool.pool, feeInfo.amountGD);
+        }
+        {
+            vm.startPrank(_alice);
+
+            srcPool.erc20.approve(address(src.bridge), srcAmount);
+            // this will cause MockOuterService to run out of gas
+            IBCUtils.ExternalInfo memory extInfo = IBCUtils.ExternalInfo(
+                LargeBytesGenerator.generateLargeBytes(1),
+                1_000_000
+            );
+            vm.chainId(src.chainId);
+            src.bridge.transferPool{value: 1 ether}(
+                src.channelInfo.channel,
+                srcPool.poolId,
+                dstPool.poolId,
+                srcAmount,
+                0,
+                addressToBytes(address(dstOuter)),
+                //addressToBytes(_bob),
+                0,
+                extInfo,
+                _alice
+            );
+            vm.stopPrank();
+        }
+
+        // 5. Relay
+        (Packet memory packet, ) = relay(
+            MessageType._TYPE_TRANSFER_POOL,
+            src.channelInfo,
+            dst.chainId
+        );
+
+        // 6. retry
+        {
+            // check retry is added
+            vm.chainId(dst.chainId);
+            bytes memory payload = dst.bridge.revertReceive(
+                src.chainId,
+                packet.sequence
+            );
+            assertEq(
+                IBCUtils.parseType(payload),
+                IBCUtils._TYPE_RETRY_EXTERNAL_CALL,
+                "6: retry data should be exists"
+            );
+
+            // check Pooled Token has been transferred
+            assertEq(
+                0,
+                srcPool.erc20.balanceOf(_alice),
+                "6: Alice's token is not change after retry"
+            );
+            assertEq(
+                dstAmount,
+                dstPool.erc20.balanceOf(address(dstOuter)),
+                "6: Outer received token"
             );
         }
     }
