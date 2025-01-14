@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import {LocalhostHelper2, LocalhostTest} from "./LocalhostHelper2.sol";
@@ -133,15 +133,17 @@ contract LocalhostTestSetup is LocalhostTest {
             // setup TokenPriceOracle
             {
                 t.price.tokenPriceOracle = new TokenPriceOracle(10 * 1e14);
-                t.price.srcPriceFeed = new MockPriceFeed(100_000);
-                t.price.dstPriceFeed = new MockPriceFeed(200_000);
+                t.price.srcPriceFeed = new MockPriceFeed(100_000, 8);
+                t.price.dstPriceFeed = new MockPriceFeed(200_000, 8);
                 t.price.tokenPriceOracle.setPriceFeedAddress(
                     chainDefs[0].chainId,
-                    address(t.price.srcPriceFeed)
+                    address(t.price.srcPriceFeed),
+                    60 * 60 * 24
                 );
                 t.price.tokenPriceOracle.setPriceFeedAddress(
                     chainDefs[1].chainId,
-                    address(t.price.dstPriceFeed)
+                    address(t.price.dstPriceFeed),
+                    60 * 60 * 24
                 );
             }
 
@@ -233,8 +235,9 @@ contract LocalhostTestSetup is LocalhostTest {
                 t.price.relayerFeeCalculator = new RelayerFeeCalculator(
                     address(t.price.tokenPriceOracle),
                     address(t.price.gasPriceOracle),
-                    100_000, //gasUsed
-                    12000 //premiumBPS
+                    100_000, // gasUsed
+                    700, // gasPerPayloadLength
+                    12000 // premiumBPS
                 );
             }
 
@@ -321,14 +324,15 @@ contract LocalhostTestSetup is LocalhostTest {
                     13,
                     1_000_000_000_000 * 1e18
                 );
-                p.priceFeed = new MockPriceFeed(1_000_000);
+                p.priceFeed = new MockPriceFeed(1_000_000, 8);
                 _chains[i]
                     .price
                     .stableTokenPriceOracle
                     .setBasePriceAndFeedAddress(
                         pi,
                         1_000,
-                        address(p.priceFeed)
+                        address(p.priceFeed),
+                        60 * 60 * 24
                     );
 
                 p.feeCalculator = new TransferPoolFeeCalculator(
@@ -430,7 +434,11 @@ contract LocalhostTestSetup is LocalhostTest {
         uint256 relayerFee = src
             .price
             .relayerFeeCalculator
-            .calcFee(MessageType._TYPE_CREDIT, dst.chainId)
+            .calcFee(
+                MessageType._TYPE_CREDIT,
+                dst.chainId,
+                IBCUtils.ExternalInfo("", 0)
+            )
             .fee;
 
         srcPool.erc20.mint(_dead, amount);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 
@@ -115,18 +115,19 @@ contract PoolTest is PoolTestDecimals, Test {
         }
         // set oracle address
         {
-            tokenPriceFeed = new MockPriceFeed(10000);
+            tokenPriceFeed = new MockPriceFeed(10000, 8);
             tokenPriceOracle = new TokenPriceOracle(10 * 1e14);
 
-            MockPriceFeed expensiveTokenPriceFeed = new MockPriceFeed(1e12);
+            MockPriceFeed expensiveTokenPriceFeed = new MockPriceFeed(1e12, 8);
             tokenPriceOracle.setPriceFeedAddress(
                 DUMMY_TOKENID_OF_POOL,
-                address(expensiveTokenPriceFeed)
+                address(expensiveTokenPriceFeed),
+                60 * 60 * 24
             );
         }
         // set stable oracle address
         {
-            stablePriceFeed = new MockPriceFeed(10000);
+            stablePriceFeed = new MockPriceFeed(10000, 8);
             stableTokenPriceOracle = new StableTokenPriceOracle();
         }
 
@@ -146,12 +147,14 @@ contract PoolTest is PoolTestDecimals, Test {
             // update oracle prices
             tokenPriceOracle.setPriceFeedAddress(
                 chainIds[i],
-                address(tokenPriceFeed)
+                address(tokenPriceFeed),
+                60 * 60 * 24
             );
             stableTokenPriceOracle.setBasePriceAndFeedAddress(
                 poolIds[i],
                 10000,
-                address(stablePriceFeed)
+                address(stablePriceFeed),
+                60 * 60 * 24
             );
 
             tokenPriceOracle.updatePrice(chainIds[i], true);
@@ -511,9 +514,9 @@ contract PoolTest is PoolTestDecimals, Test {
             assertEq(f.eqFee, 0, "f.eqFee");
             assertEq(f.eqReward, 0, "f.eqReward");
             assertEq(
-                f.lastKnownBalance,
+                f.balanceDecrease,
                 _amountGD - f.lpFee + f.eqReward,
-                "f.lastKnownBalance"
+                "f.balaanceDecrease"
             );
 
             ERC20(p.token()).transfer(address(p), _amountLD);
@@ -533,7 +536,7 @@ contract PoolTest is PoolTestDecimals, Test {
             assertEq(peerPoolInfo.weight, 100, "weight");
             assertEq(
                 peerPoolInfo.balance,
-                LDToGD(defaultMintAmountLd / 2) - f.lastKnownBalance,
+                LDToGD(defaultMintAmountLd / 2) - f.balanceDecrease,
                 "balance"
             );
             assertEq(
@@ -594,7 +597,7 @@ contract PoolTest is PoolTestDecimals, Test {
                     lpFee: 30_000,
                     eqFee: 30_000,
                     eqReward: 0,
-                    lastKnownBalance: 999_970_000
+                    balanceDecrease: 999_970_000
                 });
 
             (uint256 ret, bool isTransferred) = p.recv(
@@ -631,7 +634,7 @@ contract PoolTest is PoolTestDecimals, Test {
             );
             assertEq(
                 peerPoolInfo.lastKnownBalance,
-                LDToGD(defaultMintAmountLd / 2) - f.lastKnownBalance,
+                LDToGD(defaultMintAmountLd / 2) - f.balanceDecrease,
                 "lastKnownBalance"
             );
             assertEq(peerPoolInfo.credits, 0, "credits");
@@ -659,7 +662,7 @@ contract PoolTest is PoolTestDecimals, Test {
                 lpFee: 30_000,
                 eqFee: 30_000,
                 eqReward: 0,
-                lastKnownBalance: 999_970_000
+                balanceDecrease: 999_970_000
             });
 
         (, bool isTransferred) = p.recv(chainIds[1], poolIds[1], _to, f, true);
@@ -686,8 +689,9 @@ contract PoolTest is PoolTestDecimals, Test {
         assertEq(
             peerPoolInfo.lastKnownBalance,
             LDToGD(defaultMintAmountLd / 2) -
-                f.lastKnownBalance -
-                f.lastKnownBalance,
+                f.balanceDecrease -
+                // TODO why
+                f.balanceDecrease,
             "lastKnownBalance"
         );
         assertEq(peerPoolInfo.credits, 0, "credits");
@@ -704,7 +708,7 @@ contract PoolTest is PoolTestDecimals, Test {
                 lpFee: 30_000,
                 eqFee: 30_000,
                 eqReward: 0,
-                lastKnownBalance: 999_970_000
+                balanceDecrease: 999_970_000
             });
 
         uint256 currentBalance = IERC20(p.token()).balanceOf(address(p));
@@ -729,7 +733,7 @@ contract PoolTest is PoolTestDecimals, Test {
         );
         assertEq(
             peerPoolInfo.lastKnownBalance,
-            LDToGD(defaultMintAmountLd / 2) - f.lastKnownBalance,
+            LDToGD(defaultMintAmountLd / 2) - f.balanceDecrease,
             "lastKnownBalance"
         );
         assertEq(peerPoolInfo.credits, 0, "credits");
@@ -763,7 +767,7 @@ contract PoolTest is PoolTestDecimals, Test {
                 assertEq(f.lpFee, 1000, "f.lpFee");
                 assertEq(f.eqFee, 0, "f.eqFee");
                 assertEq(f.eqReward, 0, "f.eqReward");
-                assertEq(f.lastKnownBalance, 9_999_000, "f.lastKnownBalance");
+                assertEq(f.balanceDecrease, 9_999_000, "f.balanceDecrease");
 
                 // save values after transfer
                 uint256 index = p.peerPoolInfoIndexSeek(
@@ -1462,7 +1466,8 @@ contract PoolTest is PoolTestDecimals, Test {
         for (uint8 i = 0; i < poolIds.length; i++) {
             Pool p = proxy(i);
             vm.chainId(chainIds[i]);
-            uint256 mintLD = LD(100_000);
+            // Amount small enough to avoid consuming deltaCredits in delta calculation
+            uint256 mintLD = LD(1_000);
             correctMint(chainIds[i], poolIds[i], _to, mintLD);
             assertEq(
                 p.totalLiquidity(),
@@ -1493,7 +1498,7 @@ contract PoolTest is PoolTestDecimals, Test {
                 );
                 assertEq(
                     p.totalLiquidity(),
-                    LDToGD(defaultMintAmountLd + mintLD) - _amountGD, // 1_099_900_000_000),
+                    LDToGD(defaultMintAmountLd + mintLD) - _amountGD, // 1_000_900_000_000),
                     "totalLiquidity1"
                 );
                 assertEq(p.totalWeight(), 200, "totalWeight");
@@ -1582,7 +1587,86 @@ contract PoolTest is PoolTestDecimals, Test {
         assertEq(fee.lpFee, 1, "fee.lpFee");
         assertEq(fee.eqFee, 0, "fee.eqFee");
         assertEq(fee.eqReward, 0, "fee.eqReward");
-        assertEq(fee.lastKnownBalance, 0, "fee.lastKnownBalance");
+        assertEq(fee.balanceDecrease, 0, "fee.balanceDecrease");
+    }
+
+    function testCallDeltaInFullMode() public {
+        // full mode
+        setupCredited(defaultMintAmountLd);
+        address _to = alice;
+        for (uint8 i = 0; i < poolIds.length; i++) {
+            Pool p = proxy(i);
+            assertTrue(p.batched(), "batched");
+            assertTrue(p.defaultLPMode(), "defaultLPMode");
+            assertTrue(p.defaultSwapMode(), "defaultSwapMode");
+
+            vm.chainId(chainIds[i]);
+            // amount small enough to avoid consuming deltaCredits in delta calculation
+            uint256 mintLD = LD(1_000);
+            correctMint(chainIds[i], poolIds[i], _to, mintLD);
+            assertEq(
+                p.totalLiquidity(),
+                LDToGD(defaultMintAmountLd + mintLD),
+                "totalLiquidity0"
+            );
+            assertEq(p.deltaCredit(), LDToGD(mintLD), "deltaCredit0");
+
+            // amount enough to consume deltaCredits in delta calculation
+            uint256 j = (i + 1) % poolIds.length;
+
+            // solhint-disable-next-line no-unused-vars
+            ITransferPoolFeeCalculator.FeeInfo memory _feeInfo = p.transfer(
+                chainIds[j],
+                poolIds[j],
+                _to,
+                LD(50_000),
+                LD(49_000),
+                true
+            );
+            // all deltaCredits are consumed
+            assertEq(p.deltaCredit(), 0, "deltaCredit1");
+        }
+    }
+
+    function testCallDeltaInNonFullMode() public {
+        setupCredited(defaultMintAmountLd);
+        address _to = alice;
+        for (uint8 i = 0; i < poolIds.length; i++) {
+            // non full mode
+            correctSetDefaultDelta(i, false, false);
+
+            Pool p = proxy(i);
+            assertTrue(p.batched(), "batched");
+            assertFalse(p.defaultLPMode(), "defaultLPMode");
+            assertFalse(p.defaultSwapMode(), "defaultSwapMode");
+
+            vm.chainId(chainIds[i]);
+
+            // amount small enough to avoid consuming deltaCredits in delta calculation
+            uint256 mintLD = LD(1_000);
+            correctMint(chainIds[i], poolIds[i], _to, mintLD);
+            assertEq(
+                p.totalLiquidity(),
+                LDToGD(defaultMintAmountLd + mintLD),
+                "totalLiquidity0"
+            );
+            assertEq(p.deltaCredit(), LDToGD(mintLD), "deltaCredit0");
+
+            // amount enough to consume deltaCredits in delta calculation
+            uint256 j = (i + 1) % poolIds.length;
+
+            // solhint-disable-next-line no-unused-vars
+            ITransferPoolFeeCalculator.FeeInfo memory _feeInfo = p.transfer(
+                chainIds[j],
+                poolIds[j],
+                _to,
+                LD(50_000),
+                LD(49_000),
+                true
+            );
+            // not all deltaCredits are consumed
+            assertEq(p.deltaCredit(), LD(500), "deltaCredit1");
+        }
     }
 
     // ====================== require failure cases ======================
@@ -2072,7 +2156,7 @@ contract PoolTest is PoolTestDecimals, Test {
                     lpFee: 30_000,
                     eqFee: 30_000,
                     eqReward: 0,
-                    lastKnownBalance: 999_970_000
+                    balanceDecrease: 999_970_000
                 });
             p.recv(chainIds[j], poolIds[j], _to, f, true);
         }
@@ -2129,6 +2213,31 @@ contract PoolTest is PoolTestDecimals, Test {
             )
         );
         p.getPeerPoolInfo(chainIds[k], poolIds[k]);
+    }
+
+    function testLimitPeerPool() public {
+        uint256 weight = 1;
+
+        Pool pool = _getPool(poolIds[0], chainIds[0]);
+        vm.chainId(0);
+        vm.startPrank(admin);
+
+        // register peer pool up to the limit
+        uint256 max = pool.MAX_PEERS();
+        for (uint256 i = 0; i < max; i++) {
+            pool.registerPeerPool(i, i, weight);
+        }
+
+        // failed in registering over limit
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "PeerPool",
+                max + 1,
+                max
+            )
+        );
+        pool.registerPeerPool(max, max, weight);
     }
 
     // ====================== helper functions =============================

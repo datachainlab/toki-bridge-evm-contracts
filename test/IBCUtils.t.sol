@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/library/IBCUtils.sol";
@@ -362,7 +362,7 @@ contract IBCUtilsTest is Test {
         assertEq(a.lpFee, b.lpFee);
         assertEq(a.eqFee, b.eqFee);
         assertEq(a.eqReward, b.eqReward);
-        assertEq(a.lastKnownBalance, b.lastKnownBalance);
+        assertEq(a.balanceDecrease, b.balanceDecrease);
     }
 
     function _assertCreditInfo(

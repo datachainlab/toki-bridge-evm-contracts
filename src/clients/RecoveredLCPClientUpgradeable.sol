@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "./LCPClientUpgradeable.sol";
 import {IbcLightclientsLcpV1ClientState} from "lcp-solidity/contracts/proto/ibc/lightclients/lcp/v1/LCP.sol";
@@ -43,7 +43,7 @@ contract RecoveredLCPClientUpgradeable is LCPClientUpgradeable {
     function upgrade(
         NewClientState memory newClientState,
         NewConsensusState memory newConsensusState
-    ) external reinitializer(RECOVERED_VERSION) {
+    ) external reinitializer(RECOVERED_VERSION) onlyOwner {
         ClientStorage storage clientStorage = clientStorages[
             newClientState.clientId
         ];

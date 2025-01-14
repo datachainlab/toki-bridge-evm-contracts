@@ -116,7 +116,7 @@ export const testWithdrawRemote = async (chains: Chain[]) => {
 
   console.log("\n-- mint enough tokens to src account -----------");
   await receipt(lib.fillNativeToken(src.chain, src.signerAddress, 5));
-  await receipt(lib.fillNativeToken(dst.chain, await dst.bridge.getAddress(), 1));
+  await receipt(lib.fillBridgeNativeToken(dst.chain, dst.bridge, 1));
   await receipt(src.pooledToken.mint(src.signerAddress, src.amountLD));
   await getState(chains, src, dst, true);
 

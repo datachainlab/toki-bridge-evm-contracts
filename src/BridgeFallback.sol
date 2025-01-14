@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@hyperledger-labs/yui-ibc-solidity/contracts/apps/commons/IBCAppBase.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardTransientUpgradeable.sol";
@@ -41,10 +41,6 @@ contract BridgeFallback is
         PORT = port.toShortString();
     }
 
-    receive() external payable {}
-
-    fallback() external payable {}
-
     function callDelta(uint256 srcPoolId, bool fullMode) external {
         if (fullMode) {
             _checkRole(DEFAULT_ADMIN_ROLE);
@@ -85,7 +81,7 @@ contract BridgeFallback is
             message,
             refundTo,
             MessageType._TYPE_CREDIT,
-            0,
+            IBCUtils.ExternalInfo("", 0),
             0
         );
     }
@@ -201,7 +197,8 @@ contract BridgeFallback is
             uint256 actualRefuel = (p.refuelAmount < $.refuelDstCap)
                 ? p.refuelAmount
                 : $.refuelDstCap;
-            if (payable(p.to).send(actualRefuel)) {
+            (bool success, ) = payable(p.to).call{value: actualRefuel}("");
+            if (success) {
                 if (actualRefuel != p.refuelAmount) {
                     emit RefuelDstCapped(
                         srcChainId,
@@ -212,7 +209,7 @@ contract BridgeFallback is
                     );
                 }
             } else {
-                addRevertRefuel(
+                this.addRevertRefuel(
                     srcChainId,
                     sequence,
                     p.to,
@@ -251,7 +248,7 @@ contract BridgeFallback is
         uint256 refuelAmount,
         IBCUtils.ExternalInfo memory externalInfo,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.receiveRetryBlocks
@@ -287,7 +284,7 @@ contract BridgeFallback is
         uint256 refuelAmount,
         IBCUtils.ExternalInfo memory externalInfo,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.receiveRetryBlocks
@@ -321,7 +318,7 @@ contract BridgeFallback is
         address to,
         uint256 refuelAmount,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.externalRetryBlocks
@@ -354,7 +351,7 @@ contract BridgeFallback is
         uint256 refuelAmount,
         IBCUtils.ExternalInfo memory externalInfo,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.externalRetryBlocks
@@ -389,7 +386,7 @@ contract BridgeFallback is
         address to,
         IBCUtils.ExternalInfo memory externalInfo,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.externalRetryBlocks
@@ -424,7 +421,7 @@ contract BridgeFallback is
         uint256 amountGD,
         uint256 mintAmountGD,
         uint256 lastValidHeightOrZero
-    ) public onlySelf {
+    ) external onlySelf {
         BridgeStorage storage $ = getBridgeStorage();
         uint256 lastValidHeight = lastValidHeightOrZero == 0
             ? block.number + $.withdrawRetryBlocks

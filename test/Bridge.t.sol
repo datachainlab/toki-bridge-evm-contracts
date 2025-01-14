@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/mocks/MockPool.sol";
@@ -33,6 +33,7 @@ import "@hyperledger-labs/yui-ibc-solidity/contracts/core/25-handler/OwnableIBCH
 import {IIBCModule, IIBCModuleInitializer} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/26-router/IIBCModule.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/Channel.sol";
 import "../src/mocks/MockPayable.sol";
+import "./LargeBytesGenerator.sol";
 
 contract Reentrant is ITokiOuterServiceReceiver {
     struct Result {
@@ -77,6 +78,10 @@ contract BridgeTest is Test {
     uint256 public constant DST_CHAIN_ID = 222;
     string public constant DST_CHANNEL = "channel-2";
     uint256 public constant INVALID_CHAIN_ID = 333;
+
+    // same values as in BridgeStore.sol
+    uint256 public constant MAX_TO_LENGTH = 1024; // 1KB
+    uint256 public constant MAX_PAYLOAD_LENGTH = 10 * 1024; // 1KB
 
     uint8 internal constant TYPE_TRANSFER_POOL = 1;
     uint8 internal constant TYPE_CREDIT = 2;
@@ -152,15 +157,17 @@ contract BridgeTest is Test {
         // setup TokenPriceOracle
         {
             tokenPriceOracle = new TokenPriceOracle(10 * 1e14);
-            srcPriceFeed = new MockPriceFeed(100_000);
-            dstPriceFeed = new MockPriceFeed(200_000);
+            srcPriceFeed = new MockPriceFeed(100_000, 8);
+            dstPriceFeed = new MockPriceFeed(200_000, 8);
             tokenPriceOracle.setPriceFeedAddress(
                 SRC_CHAIN_ID,
-                address(srcPriceFeed)
+                address(srcPriceFeed),
+                60 * 60 * 24
             );
             tokenPriceOracle.setPriceFeedAddress(
                 DST_CHAIN_ID,
-                address(dstPriceFeed)
+                address(dstPriceFeed),
+                60 * 60 * 24
             );
         }
 
@@ -189,6 +196,7 @@ contract BridgeTest is Test {
                 address(tokenPriceOracle),
                 address(gasPriceOracle),
                 100_000,
+                700,
                 12000
             );
         }
@@ -246,6 +254,11 @@ contract BridgeTest is Test {
 
         // inf approve
         erc20.approve(address(bridge), 1_000_000_000 * DENOMI);
+    }
+
+    function testReceiveFail() public {
+        vm.expectRevert();
+        payable(address(bridge)).call{value: 100}("");
     }
 
     // ====================== success test cases(router func) =============================
@@ -367,6 +380,26 @@ contract BridgeTest is Test {
         );
     }
 
+    function testTransferPoolFailWithEmptyRecipient() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiInvalidRecipientBytes.selector
+            )
+        );
+
+        bridge.transferPool{value: 1 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            100,
+            0,
+            new bytes(0),
+            0,
+            IBCUtils.ExternalInfo("", 0),
+            alice
+        );
+    }
+
     function testTransferPoolFailRefuelSrcCap() public {
         vm.chainId(SRC_CHAIN_ID);
         bridge.setRefuelSrcCap(SRC_CHANNEL, 999);
@@ -453,6 +486,56 @@ contract BridgeTest is Test {
         );
     }
 
+    function testTransferPoolFailWithMaxToLengthValidation() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "to",
+                MAX_TO_LENGTH + 1,
+                MAX_TO_LENGTH
+            )
+        );
+        bytes memory to = LargeBytesGenerator.generateLargeBytes(
+            MAX_TO_LENGTH + 1
+        );
+        bridge.transferPool{value: 1 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            100,
+            0,
+            to,
+            0,
+            IBCUtils.ExternalInfo("", 0),
+            alice
+        );
+    }
+
+    function testTransferPoolFailWithMaxPayloadLengthValidation() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "payload",
+                MAX_PAYLOAD_LENGTH + 1,
+                MAX_PAYLOAD_LENGTH
+            )
+        );
+        bytes memory payload = LargeBytesGenerator.generateLargeBytes(
+            MAX_PAYLOAD_LENGTH + 1
+        );
+        bridge.transferPool{value: 1 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            100,
+            0,
+            bbob,
+            0,
+            IBCUtils.ExternalInfo(payload, 0),
+            alice
+        );
+    }
+
     function testTransferPoolInLedger() public {
         vm.chainId(SRC_CHAIN_ID);
         bridge.transferPoolInLedger(
@@ -525,11 +608,7 @@ contract BridgeTest is Test {
             assertEq(_fee.lpFee, 0, "callRecv: fee.lpFee");
             assertEq(_fee.eqFee, 0, "callRecv: fee.eqFee");
             assertEq(_fee.eqReward, 0, "callRecv: fee.eqReward");
-            assertEq(
-                _fee.lastKnownBalance,
-                0,
-                "callRecv: fee.lastKnownBalance"
-            );
+            assertEq(_fee.balanceDecrease, 0, "callRecv: fee.balanceDecrease");
         }
     }
 
@@ -726,6 +805,49 @@ contract BridgeTest is Test {
         );
     }
 
+    function testWithdrawRemoteFailWithMaxToLengthValidation() public {
+        bytes memory to = LargeBytesGenerator.generateLargeBytes(
+            MAX_TO_LENGTH + 1
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "to",
+                MAX_TO_LENGTH + 1,
+                MAX_TO_LENGTH
+            )
+        );
+
+        bridge.withdrawRemote{value: 10_000 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            200,
+            1,
+            to,
+            alice
+        );
+    }
+
+    function testWithdrawRemoteFailWithEmptyRecipient() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiInvalidRecipientBytes.selector
+            )
+        );
+
+        bridge.withdrawRemote{value: 10_000 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            200,
+            1,
+            new bytes(0),
+            alice
+        );
+    }
+
     function testWithdrawRemoteInLedger() public {
         vm.chainId(SRC_CHAIN_ID);
         bridge.deposit(0, 100, alice);
@@ -867,6 +989,23 @@ contract BridgeTest is Test {
             1,
             0,
             bbob,
+            alice
+        );
+    }
+
+    function testWithdrawLocalFailWithInvalidRecipientLength() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiInvalidRecipientBytes.selector
+            )
+        );
+
+        bridge.withdrawLocal{value: 1 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            300,
+            new bytes(1),
             alice
         );
     }
@@ -1139,13 +1278,11 @@ contract BridgeTest is Test {
         // clarify setup parameters
         assertEq(100_000, tokenPriceOracle.getLatestPrice(SRC_CHAIN_ID));
         assertEq(200_000, tokenPriceOracle.getLatestPrice(DST_CHAIN_ID));
-        assertEq(100, gasPriceOracle.getPrice(SRC_CHAIN_ID));
-        assertEq(111, gasPriceOracle.getPrice(DST_CHAIN_ID));
         assertEq(0, bridge.premiumBPS(DST_CHAIN_ID));
 
-        // (100 * 111 + 20000) * 200_000 / 100_000 = 31100 * 2 = 62200
-        uint256 ret = bridge.calcSrcNativeAmount(DST_CHAIN_ID, 100, 20000);
-        assertEq(ret, 62200);
+        // 20000 * 200_000 / 100_000 = 40_000
+        uint256 ret = bridge.calcSrcNativeAmount(DST_CHAIN_ID, 20000);
+        assertEq(ret, 40000);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -1153,7 +1290,7 @@ contract BridgeTest is Test {
                 "priceFeedAddress"
             )
         );
-        bridge.calcSrcNativeAmount(INVALID_CHAIN_ID, 100, 0);
+        bridge.calcSrcNativeAmount(INVALID_CHAIN_ID, 0);
     }
 
     function testGetPool() public {
@@ -1586,7 +1723,7 @@ contract BridgeTest is Test {
 
         // set force fail false out service & set bridge balance 2000
         outerService.setForceFail(false);
-        payable(address(bridge)).call{value: 2_000}("");
+        bridge.refill{value: 2_000}();
 
         // retry on post
         bridge.retryOnReceive(DST_CHANNEL, 1);
@@ -1616,7 +1753,7 @@ contract BridgeTest is Test {
         vm.chainId(DST_CHAIN_ID);
         // set force fail out service but set bridge balance 2000(for send)
         outerService.setForceFail(true);
-        payable(address(bridge)).call{value: 2_000}("");
+        bridge.refill{value: 2_000}();
 
         // make transfer pool payload
         bytes memory payload = IBCUtils.encodeTransferPool(
@@ -1748,8 +1885,16 @@ contract BridgeTest is Test {
             assertEq(address(outerService).balance, 0);
         }
 
+        // retry on post (fail)
+        bridge.retryOnReceive(DST_CHANNEL, 1);
+        // bridge & outer balance
+        {
+            assertEq(address(bridge).balance, 0);
+            assertEq(address(outerService).balance, 0);
+        }
+
         // set bridge balance 2000
-        payable(address(bridge)).call{value: 2_000}("");
+        bridge.refill{value: 2_000}();
 
         // retry on post
         bridge.retryOnReceive(DST_CHANNEL, 1);
@@ -1776,7 +1921,7 @@ contract BridgeTest is Test {
         Packet memory packet = _buildPacketData(payload);
 
         // set bridge balance 2000
-        payable(address(bridge)).call{value: 2_000}("");
+        bridge.refill{value: 2_000}();
 
         vm.expectEmit(true, false, false, true);
         emit IBridgeManager.SetRefuelDstCap(39);

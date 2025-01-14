@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -18,9 +18,9 @@ abstract contract StaticFlowRateLimiter is
     struct StaticFlowRateLimiterStorage {
         uint256 _currentPeriodEnd; // The block height at which the current period ends.
         uint256 _currentPeriodAmount; // The amount of flow accumulated in the current period.
+        bool _appliedLockPeriod; // The flag to lock the flow rate limiting.
         // TODO: Replace to transient storage when we update evm version to cancun or later.
         uint256 _cancellableAmount; // The amount of flow that can be cancelled.
-        bool _appliedLockPeriod; // The flag to lock the flow rate limiting.
     }
 
     // keccak256(abi.encode(uint256(keccak256("toki.storage.StaticFlowRateLimiter")) - 1)) & ~bytes32(uint256(0xff))
@@ -46,6 +46,7 @@ abstract contract StaticFlowRateLimiter is
         LOCK_PERIOD = lockPeriod;
         LIMIT = limit;
         THRESHOLD = threshold;
+        _disableInitializers();
     }
 
     function resetFlowRateLimit() public onlyRole(DEFAULT_ADMIN_ROLE) {

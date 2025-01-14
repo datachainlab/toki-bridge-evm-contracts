@@ -2743,6 +2743,11 @@
       "type": "error"
     },
     {
+      "inputs": [],
+      "name": "TokiInvalidRecipientBytes",
+      "type": "error"
+    },
+    {
       "inputs": [
         {
           "internalType": "uint8",
@@ -2778,6 +2783,22 @@
         }
       ],
       "name": "TokiMock",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "TokiNativeTransferIsFailed",
       "type": "error"
     },
     {
@@ -2906,6 +2927,17 @@
         }
       ],
       "name": "TokiPoolWithdrawConfirmIsFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "updatedAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "TokiPriceIsExpired",
       "type": "error"
     },
     {

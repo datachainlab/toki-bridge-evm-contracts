@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 interface IStableTokenPriceOracle {
     enum PriceDeviationStatus {
@@ -17,7 +17,8 @@ interface IStableTokenPriceOracle {
     event PoolStateUpdated(
         uint256 indexed poolId,
         uint256 basePrice,
-        address priceFeedAddress
+        address priceFeedAddress,
+        uint256 validityPeriod
     );
 
     function updateCurrentPrice(uint256 poolId, bool forceUpdate) external;
@@ -37,4 +38,12 @@ interface IStableTokenPriceOracle {
     function getPriceFeedAddress(
         uint256 poolId
     ) external view returns (address);
+
+    function getPriceFeedDecimals(uint256 poolId) external view returns (uint8);
+
+    function getCurrentPriceAndDecimals(
+        uint256 poolId
+    ) external view returns (uint256, uint8);
+
+    function getValidityPeriod(uint256 poolId) external view returns (uint256);
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/replaceable/TransferPoolFeeCalculator.sol";
@@ -12,9 +12,15 @@ import "../src/mocks/MockToken.sol";
 contract MockStableTokenPriceOracle is IStableTokenPriceOracle {
     PriceDeviationStatus public priceDeviationStatus;
     mapping(uint256 => uint256) public poolIdToCurrentPrice;
+    mapping(uint256 => uint8) public poolIdToDecimals;
 
-    function setCurrentPrice(uint256 _poolId, uint256 _currentPrice) external {
+    function setCurrentPrice(
+        uint256 _poolId,
+        uint256 _currentPrice,
+        uint8 _decimals
+    ) external {
         poolIdToCurrentPrice[_poolId] = _currentPrice;
+        poolIdToDecimals[_poolId] = _decimals;
     }
 
     function updateCurrentPrice(
@@ -42,52 +48,102 @@ contract MockStableTokenPriceOracle is IStableTokenPriceOracle {
         return priceDeviationStatus;
     }
 
+    function getValidityPeriod(
+        uint256
+    ) external pure override returns (uint256) {
+        return 1;
+    }
+
     function getCurrentPrice(
         uint256 _poolId
-    ) external view override returns (uint256) {
+    ) public view override returns (uint256) {
         return poolIdToCurrentPrice[_poolId];
     }
 
-    function getBasePrice(uint256 _poolId) external view returns (uint256) {
+    function getBasePrice(uint256 _poolId) public view returns (uint256) {
         return poolIdToCurrentPrice[_poolId];
+    }
+
+    function getPriceFeedDecimals(
+        uint256 _poolId
+    ) public view override returns (uint8) {
+        return poolIdToDecimals[_poolId];
+    }
+
+    function getCurrentPriceAndDecimals(
+        uint256 poolId
+    ) public view override returns (uint256 price, uint8 decimals) {
+        price = getCurrentPrice(poolId);
+        decimals = getPriceFeedDecimals(poolId);
     }
 
     function getPriceFeedAddress(
         uint256
-    ) external pure override returns (address) {
+    ) public pure override returns (address) {
         return address(0x1);
     }
 }
 
 contract MockTokenPriceOracle is ITokenPriceOracle {
     mapping(uint256 => uint256) public tokenId2Price;
+    uint8 public decimals;
+
+    constructor(uint8 _decimals) {
+        decimals = _decimals;
+    }
 
     function mockSetPrice(uint256 tokenId, uint256 price) external {
         tokenId2Price[tokenId] = price;
     }
 
-    function getPrice(uint256 tokenId) external view returns (uint256) {
+    function getValidityPeriod(
+        uint256 /* tokenId */
+    ) external pure override returns (uint256) {
+        return 1;
+    }
+
+    function getPrice(uint256 tokenId) public view returns (uint256) {
         return tokenId2Price[tokenId];
     }
 
-    function getLatestPrice(uint256 tokenId) external view returns (uint256) {
+    function getLatestPrice(uint256 tokenId) public view returns (uint256) {
         return tokenId2Price[tokenId];
+    }
+
+    function getPriceFeedDecimals(
+        uint256 /* tokenId */
+    ) public view returns (uint8) {
+        return decimals;
+    }
+
+    function getPriceAndDecimals(
+        uint256 tokenId
+    ) public view returns (uint256 price, uint8 decimals) {
+        price = getPrice(tokenId);
+        decimals = getPriceFeedDecimals(tokenId);
+    }
+
+    function getLatestPriceAndDecimals(
+        uint256 tokenId
+    ) public view returns (uint256 price, uint8 decimals) {
+        price = getLatestPrice(tokenId);
+        decimals = getPriceFeedDecimals(tokenId);
     }
 
     function updatePrice(
         uint256 /*tokenId*/,
         bool /*forceUpdate*/
-    ) external pure {
+    ) public pure {
         revert("not implemented");
     }
 
     function getPriceFeedAddress(
         uint256 /* tokenId */
-    ) external pure returns (address) {
+    ) public pure returns (address) {
         return address(0x0);
     }
 
-    function tokenIdToki() external pure returns (uint256) {
+    function tokenIdToki() public pure returns (uint256) {
         return 0x544F4B49544F4B49544F4B49544F4B49;
     }
 }
@@ -390,8 +446,8 @@ contract TransferPoolFeeCalculatorTest is Test {
             0
         );
 
-        priceOracle.setCurrentPrice(1, 9e17);
-        priceOracle.setCurrentPrice(2, 11e17);
+        priceOracle.setCurrentPrice(1, 9e17, 6);
+        priceOracle.setCurrentPrice(2, 11e17, 6);
         priceOracle.setPriceDeviationStatus(
             IStableTokenPriceOracle.PriceDeviationStatus.Drift
         );
@@ -402,7 +458,7 @@ contract TransferPoolFeeCalculatorTest is Test {
             1,
             2,
             1_000_000 * (10 ** globalDecimals),
-            900 * (10 ** globalDecimals) + 818181818181818181818181 // 819081.818181818181818181
+            900 * (10 ** globalDecimals) + 181818181818181818181818
         );
     }
 
@@ -570,8 +626,8 @@ contract TransferPoolFeeCalculatorTest is Test {
     }
 
     function testGetDriftProtocolFee() public {
-        priceOracle.setCurrentPrice(1, 9e17);
-        priceOracle.setCurrentPrice(2, 11e17);
+        priceOracle.setCurrentPrice(1, 9e17, 6);
+        priceOracle.setCurrentPrice(2, 11e17, 6);
 
         _testGetDriftProtocolFee(
             "testGetDriftProtocolFee-10: same PoolId",
@@ -581,13 +637,14 @@ contract TransferPoolFeeCalculatorTest is Test {
             10000,
             0
         );
+        // Normal status is same as Drift status when src pool price < dst pool price
         _testGetDriftProtocolFee(
             "testGetDriftProtocolFee-20: normal status",
             IStableTokenPriceOracle.PriceDeviationStatus.Normal,
             1,
             2,
             10000,
-            0
+            1818 // (10000 * (11 - 9)) / 11
         );
         _testGetDriftProtocolFee(
             "testGetDriftProtocolFee-30: drift status, src pool price < dst pool price",
@@ -595,7 +652,7 @@ contract TransferPoolFeeCalculatorTest is Test {
             1,
             2,
             10000,
-            8181
+            1818 // (10000 * (11 - 9)) / 11
         );
         _testGetDriftProtocolFee(
             "testGetDriftProtocolFee-40: drift status, src pool price > dst pool price",
@@ -604,6 +661,34 @@ contract TransferPoolFeeCalculatorTest is Test {
             1,
             10000,
             0
+        );
+    }
+
+    function testGetDriftProtocolFeeDecimalsSrcGtDst() public {
+        priceOracle.setCurrentPrice(1, 9e18, 7);
+        priceOracle.setCurrentPrice(2, 11e17, 6);
+
+        _testGetDriftProtocolFee(
+            "testGetDriftProtocolFeeDecimalsSrcGtDst",
+            IStableTokenPriceOracle.PriceDeviationStatus.Drift,
+            1,
+            2,
+            10000,
+            1818 // (10000 * (11e11 - 9e11)) / 11e11 = 10000 * 2 / 11 = 1818
+        );
+    }
+
+    function testGetDriftProtocolFeeDecimalsSrcLtDst() public {
+        priceOracle.setCurrentPrice(1, 9e17, 6);
+        priceOracle.setCurrentPrice(2, 11e18, 7);
+
+        _testGetDriftProtocolFee(
+            "testGetDriftProtocolFeeDecimalsSrcGtDst",
+            IStableTokenPriceOracle.PriceDeviationStatus.Drift,
+            1,
+            2,
+            10000,
+            1818 // (10000 * (11e11 - 9e11)) / 11e11 = 10000 * 2 / 11 = 1818
         );
     }
 
@@ -769,8 +854,8 @@ contract TransferPoolFeeCalculatorTest is Test {
         priceOracle.setPriceDeviationStatus(
             IStableTokenPriceOracle.PriceDeviationStatus.Drift
         );
-        priceOracle.setCurrentPrice(1, 9e17);
-        priceOracle.setCurrentPrice(2, 11e17);
+        priceOracle.setCurrentPrice(1, 9e17, 6);
+        priceOracle.setCurrentPrice(2, 11e17, 6);
         _testCalcFee(
             "testCalcFee-80: not whitelisted, no fee zone, reward less than protocol fee, drift",
             srcPoolInfo,
@@ -779,10 +864,10 @@ contract TransferPoolFeeCalculatorTest is Test {
             100e18,
             ITransferPoolFeeCalculator.FeeInfo(
                 100e18 -
-                    (87000000000000000 + 81818181818181818181) -
+                    (87000000000000000 + 18181818181818181818) -
                     3400000000000000 -
                     0,
-                87000000000000000 + 81818181818181818181,
+                87000000000000000 + 18181818181818181818,
                 3400000000000000,
                 0,
                 70000000000000000,
@@ -1134,9 +1219,9 @@ contract TransferPoolFeeCalculatorTest is Test {
         );
 
         assertEq(
-            feeInfo.lastKnownBalance,
-            expectedFeeInfo.lastKnownBalance,
-            string.concat(testCase, ": lastKnownBalance")
+            feeInfo.balanceDecrease,
+            expectedFeeInfo.balanceDecrease,
+            string.concat(testCase, ": balanceDecrease")
         );
     }
 

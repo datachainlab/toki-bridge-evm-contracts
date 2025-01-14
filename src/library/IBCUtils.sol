@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "../interfaces/ITokiErrors.sol";
 import "../interfaces/ITransferPoolFeeCalculator.sol";
@@ -9,7 +9,7 @@ import "./MessageType.sol";
 library IBCUtils {
     struct ExternalInfo {
         bytes payload;
-        uint256 dstOuterGas;
+        uint256 dstOuterGas; // in gas
     }
 
     struct SendCreditPayload {

@@ -43,7 +43,7 @@ export const testTransferToken = async (chains: Chain[]) => {
   await receipt(chains[0].tokiToken!.grantRole(await chains[0].tokiToken!.MINTER_ROLE(), chains[0].wallet.address));
   await receipt(chains[0].tokiToken!.mint(alice, amount));
   await receipt(lib.fillNativeToken(chains[0], aliceAddress, 3));
-  await receipt(lib.fillNativeToken(chains[1], await chains[1].bridge.getAddress(), 1));
+  await receipt(lib.fillBridgeNativeToken(chains[1], chains[1].bridge, 1));
   await dump(chains, alice, bob);
 
   console.log("\n-- transferToken -----------");
@@ -99,7 +99,7 @@ export const testTransferToken_fail_tokiTokenCap = async (chains: Chain[]) => {
   await receipt(chains[0].tokiToken!.grantRole(await chains[0].tokiToken!.MINTER_ROLE(), chains[0].wallet.address));
   await receipt(chains[0].tokiToken!.mint(alice, amount));
   await receipt(lib.fillNativeToken(chains[0], aliceAddress, 3));
-  await receipt(lib.fillNativeToken(chains[1], await chains[1].bridge.getAddress(), 1));
+  await receipt(lib.fillBridgeNativeToken(chains[1], chains[1].bridge, 1));
   await dump(chains, alice, bob);
 
   console.log("\n-- softcap -----------");

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -71,6 +71,7 @@ contract Bridge is
     constructor(uint256 appVersion_, string memory port) {
         APP_VERSION = appVersion_;
         PORT = port.toShortString();
+        _disableInitializers();
     }
 
     function initialize(
@@ -119,8 +120,6 @@ contract Bridge is
         $.externalRetryBlocks = param.externalRetryBlocks;
     }
 
-    receive() external payable {}
-
     /* solhint-disable no-complex-fallback */
     /**
      * @dev To avoid Bridge deployment size limits and reduce user gas costs:
@@ -162,7 +161,7 @@ contract Bridge is
         uint256 poolId,
         uint256 amountLD,
         address to
-    ) external payable nonReentrant {
+    ) external nonReentrant {
         IPool pool = getPool(poolId);
         uint256 convertRate = pool.convertRate();
         amountLD = _roundDownToConvertRate(amountLD, convertRate);
@@ -196,6 +195,8 @@ contract Bridge is
         if (refundTo == address(0x0)) {
             revert TokiZeroAddress("refundTo");
         }
+        _validateToLength(to);
+        _validatePayloadLength(externalInfo.payload);
 
         uint256 dstChainId = getChainId(srcChannel, true);
 
@@ -287,6 +288,8 @@ contract Bridge is
         if (refundTo == address(0x0)) {
             revert TokiZeroAddress("refundTo");
         }
+        _validateToLength(to);
+        _validatePayloadLength(externalInfo.payload);
 
         uint256 dstChainId = getChainId(srcChannel, true);
 
@@ -321,7 +324,7 @@ contract Bridge is
             message,
             refundTo,
             MessageType._TYPE_TRANSFER_TOKEN,
-            externalInfo.dstOuterGas,
+            externalInfo,
             refuelAmount
         );
     }
@@ -342,6 +345,7 @@ contract Bridge is
         if (refundTo == address(0x0)) {
             revert TokiZeroAddress("refundTo");
         }
+        _validateToLength(to);
 
         // call `withdrawRemote` and `sendCredit` on pool contract.
         // -> And call `receiveIBC` on dst side.
@@ -422,6 +426,10 @@ contract Bridge is
         if (refundTo == address(0x0)) {
             revert TokiZeroAddress("refundTo");
         }
+        // to address must be 20 bytes because withdraw confirm is called on the src side.
+        if (to.length != 20) {
+            revert TokiInvalidRecipientBytes();
+        }
 
         // call `withdrawLocal` and `sendCredit` on pool contract.
         // -> And call `withdrawCheck` on dst side.
@@ -446,7 +454,7 @@ contract Bridge is
             message,
             refundTo,
             MessageType._TYPE_WITHDRAW,
-            0,
+            IBCUtils.ExternalInfo("", 0),
             0
         );
     }
@@ -536,6 +544,12 @@ contract Bridge is
                     ReceiveOption(true, 0)
                 );
             } else {
+                _handlePoolRecvFailure(
+                    packet.destinationChannel,
+                    p.srcPoolId,
+                    p.dstPoolId,
+                    p.feeInfo
+                );
                 emit Unrecoverable(
                     getChainId(packet.destinationChannel, false),
                     packet.sequence
@@ -579,6 +593,7 @@ contract Bridge is
                 p.creditInfo
             );
 
+            // p.to length is validated in withdrawLocal, so most cases should be successful.
             (address recipient, bool success) = IBCUtils.decodeAddress(p.to);
             if (success) {
                 _withdrawConfirm(
@@ -592,6 +607,13 @@ contract Bridge is
                     ReceiveOption(true, 0)
                 );
             } else {
+                _handlePoolWithdrawConfirmFailure(
+                    packet.destinationChannel,
+                    p.withdrawLocalPoolId,
+                    p.withdrawCheckPoolId,
+                    p.transferAmountGD,
+                    p.mintAmountGD
+                );
                 emit Unrecoverable(
                     getChainId(packet.destinationChannel, false),
                     packet.sequence
@@ -613,6 +635,8 @@ contract Bridge is
                     0
                 );
             } else {
+                // for now, we don't have a failure handle case for token transfer
+
                 emit Unrecoverable(
                     getChainId(packet.destinationChannel, false),
                     packet.sequence
@@ -845,7 +869,7 @@ contract Bridge is
             message,
             p.refundTo,
             MessageType._TYPE_TRANSFER_POOL,
-            p.externalInfo.dstOuterGas,
+            p.externalInfo,
             p.refuelAmount
         );
     }
@@ -972,6 +996,35 @@ contract Bridge is
         _send(dstChannel, message);
     }
 
+    function _handlePoolRecvFailure(
+        string memory dstChannel,
+        uint256 srcPoolId,
+        uint256 dstPoolId,
+        ITransferPoolFeeCalculator.FeeInfo memory fee
+    ) internal {
+        uint256 srcChainId = getChainId(dstChannel, true);
+        IPool pool = getPool(dstPoolId);
+        pool.handleRecvFailure(srcChainId, srcPoolId, address(0), fee);
+    }
+
+    function _handlePoolWithdrawConfirmFailure(
+        string memory dstChannel,
+        uint256 withdrawLocalPoolId,
+        uint256 withdrawCheckPoolId,
+        uint256 amountGD,
+        uint256 mintAmountGD
+    ) internal {
+        uint256 srcChainId = getChainId(dstChannel, true);
+        IPool pool = getPool(withdrawLocalPoolId); // self
+        pool.handleWithdrawConfirmFailure(
+            srcChainId,
+            withdrawCheckPoolId,
+            address(0),
+            amountGD,
+            mintAmountGD
+        );
+    }
+
     function _authorizeUpgrade(
         address newImplementation
     ) internal virtual override onlyRole(DEFAULT_ADMIN_ROLE) {}
@@ -1015,6 +1068,21 @@ contract Bridge is
         //   It's ok because the aim of this statement is to round amountLD.
         // slither-disable-next-line divide-before-multiply
         return (amount / convertRate) * convertRate;
+    }
+
+    function _validateToLength(bytes calldata to) internal pure {
+        if (to.length == 0) {
+            revert TokiInvalidRecipientBytes();
+        }
+        if (to.length > MAX_TO_LENGTH) {
+            revert TokiExceed("to", to.length, MAX_TO_LENGTH);
+        }
+    }
+
+    function _validatePayloadLength(bytes calldata payload) internal pure {
+        if (payload.length > MAX_PAYLOAD_LENGTH) {
+            revert TokiExceed("payload", payload.length, MAX_PAYLOAD_LENGTH);
+        }
     }
 
     function _isChannelUpgradeSelector(

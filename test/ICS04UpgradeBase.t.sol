@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.20;
+pragma solidity 0.8.28;
 
 // original: https://github.com/hyperledger-labs/yui-ibc-solidity/blob/v0.3.38/tests/foundry/src/ICS04Upgrade.t.sol
 
@@ -75,38 +75,25 @@ contract ICS04UpgradeBase is
         bool fastPath;
     }
 
-    function handshakeUpgrade(
-        ChannelInfo memory channel0,
-        ChannelInfo memory channel1,
-        UpgradeProposals memory proposals,
-        HandshakeFlow memory flow
-    ) internal returns (uint64) {
-        return
-            handshakeUpgradeWithCallbacks(
-                channel0,
-                channel1,
-                proposals,
-                flow,
-                emptyCallbacks()
-            );
+    struct HandshakeUpgradeWithCallbacksArgs {
+        ChannelInfo channel0;
+        ChannelInfo channel1;
+        UpgradeProposals proposals;
+        HandshakeFlow flow;
+        HandshakeCallbacks callbacks;
     }
-
     function handshakeUpgradeWithCallbacks(
-        ChannelInfo memory channel0,
-        ChannelInfo memory channel1,
-        UpgradeProposals memory proposals,
-        HandshakeFlow memory flow,
-        HandshakeCallbacks memory callbacks
+        HandshakeUpgradeWithCallbacksArgs memory args
     ) internal returns (uint64 upgradeSequence) {
         Channel.Order currentOrder;
         {
             (Channel.Data memory channelData0, ) = ibcHandler.getChannel(
-                channel0.portId,
-                channel0.channelId
+                args.channel0.portId,
+                args.channel0.channelId
             );
             (Channel.Data memory channelData1, ) = ibcHandler.getChannel(
-                channel1.portId,
-                channel1.channelId
+                args.channel1.portId,
+                args.channel1.channelId
             );
             require(
                 channelData0.upgrade_sequence == channelData1.upgrade_sequence,
@@ -119,58 +106,65 @@ contract ICS04UpgradeBase is
             currentOrder = channelData0.ordering;
             upgradeSequence = channelData0.upgrade_sequence + 1;
         }
+
         {
             // Init@channel0: OPEN -> OPEN(INIT)
             IIBCChannelUpgradableModule(
-                address(ibcHandler.getIBCModuleByPort(channel0.portId))
+                address(ibcHandler.getIBCModuleByPort(args.channel0.portId))
             ).proposeUpgrade(
-                    channel0.portId,
-                    channel0.channelId,
+                    args.channel0.portId,
+                    args.channel0.channelId,
                     UpgradeFields.Data({
-                        ordering: proposals.p0.order,
+                        ordering: args.proposals.p0.order,
                         connection_hops: IBCChannelLib.buildConnectionHops(
-                            proposals.p0.connectionId
+                            args.proposals.p0.connectionId
                         ),
-                        version: proposals.p0.version
+                        version: args.proposals.p0.version
                     }),
-                    proposals.p0.timeout
+                    args.proposals.p0.timeout
                 );
             assertEq(
                 ibcHandler.channelUpgradeInit(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeInit({
-                        portId: channel0.portId,
-                        channelId: channel0.channelId,
+                        portId: args.channel0.portId,
+                        channelId: args.channel0.channelId,
                         proposedUpgradeFields: IIBCChannelUpgradableModule(
                             address(
-                                ibcHandler.getIBCModuleByPort(channel0.portId)
+                                ibcHandler.getIBCModuleByPort(
+                                    args.channel0.portId
+                                )
                             )
                         )
                             .getUpgradeProposal(
-                                channel0.portId,
-                                channel0.channelId
+                                args.channel0.portId,
+                                args.channel0.channelId
                             )
                             .fields
                     })
                 ),
                 upgradeSequence
             );
-            ensureChannelState(ibcHandler, channel0, Channel.State.STATE_OPEN);
-            if (!callbacks.openInitAndOpen.reverse) {
+            ensureChannelState(
+                ibcHandler,
+                args.channel0,
+                Channel.State.STATE_OPEN
+            );
+            if (!args.callbacks.openInitAndOpen.reverse) {
                 if (
-                    !callbacks.openInitAndOpen.callback(
+                    !args.callbacks.openInitAndOpen.callback(
                         ibcHandler,
-                        channel0,
-                        channel1
+                        args.channel0,
+                        args.channel1
                     )
                 ) {
                     return upgradeSequence;
                 }
             } else {
                 if (
-                    !callbacks.openInitAndOpen.callback(
+                    !args.callbacks.openInitAndOpen.callback(
                         ibcHandler,
-                        channel1,
-                        channel0
+                        args.channel1,
+                        args.channel0
                     )
                 ) {
                     return upgradeSequence;
@@ -179,35 +173,37 @@ contract ICS04UpgradeBase is
         }
 
         IIBCChannelUpgradableModule(
-            address(ibcHandler.getIBCModuleByPort(channel1.portId))
+            address(ibcHandler.getIBCModuleByPort(args.channel1.portId))
         ).proposeUpgrade(
-                channel1.portId,
-                channel1.channelId,
+                args.channel1.portId,
+                args.channel1.channelId,
                 UpgradeFields.Data({
-                    ordering: proposals.p1.order,
+                    ordering: args.proposals.p1.order,
                     connection_hops: IBCChannelLib.buildConnectionHops(
-                        proposals.p1.connectionId
+                        args.proposals.p1.connectionId
                     ),
-                    version: proposals.p1.version
+                    version: args.proposals.p1.version
                 }),
-                proposals.p1.timeout
+                args.proposals.p1.timeout
             );
 
-        if (flow.crossingHello) {
+        if (args.flow.crossingHello) {
             // Init@channel1: OPEN -> OPEN(INIT)
             assertEq(
                 ibcHandler.channelUpgradeInit(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeInit({
-                        portId: channel1.portId,
-                        channelId: channel1.channelId,
+                        portId: args.channel1.portId,
+                        channelId: args.channel1.channelId,
                         proposedUpgradeFields: IIBCChannelUpgradableModule(
                             address(
-                                ibcHandler.getIBCModuleByPort(channel1.portId)
+                                ibcHandler.getIBCModuleByPort(
+                                    args.channel1.portId
+                                )
                             )
                         )
                             .getUpgradeProposal(
-                                channel1.portId,
-                                channel1.channelId
+                                args.channel1.portId,
+                                args.channel1.channelId
                             )
                             .fields
                     })
@@ -220,43 +216,50 @@ contract ICS04UpgradeBase is
             // Try@channel1: OPEN(INIT) -> FLUSHING
             IIBCChannelUpgradeBase.MsgChannelUpgradeTry
                 memory msg_ = IIBCChannelUpgradeBase.MsgChannelUpgradeTry({
-                    portId: channel1.portId,
-                    channelId: channel1.channelId,
+                    portId: args.channel1.portId,
+                    channelId: args.channel1.channelId,
                     counterpartyUpgradeFields: IIBCChannelUpgradableModule(
-                        address(ibcHandler.getIBCModuleByPort(channel0.portId))
+                        address(
+                            ibcHandler.getIBCModuleByPort(args.channel0.portId)
+                        )
                     )
-                        .getUpgradeProposal(channel0.portId, channel0.channelId)
+                        .getUpgradeProposal(
+                            args.channel0.portId,
+                            args.channel0.channelId
+                        )
                         .fields,
                     counterpartyUpgradeSequence: upgradeSequence,
                     proposedConnectionHops: IBCChannelLib.buildConnectionHops(
-                        proposals.p1.connectionId
+                        args.proposals.p1.connectionId
                     ),
                     proofs: upgradeLocalhostProofs()
                 });
+
             (bool ok, uint64 seq) = ibcHandler.channelUpgradeTry(msg_);
             assertTrue(ok);
             assertEq(seq, upgradeSequence);
             ensureChannelState(
                 ibcHandler,
-                channel1,
+                args.channel1,
                 Channel.State.STATE_FLUSHING
             );
-            if (!callbacks.openInitAndFlushing.reverse) {
+
+            if (!args.callbacks.openInitAndFlushing.reverse) {
                 if (
-                    !callbacks.openInitAndFlushing.callback(
+                    !args.callbacks.openInitAndFlushing.callback(
                         ibcHandler,
-                        channel0,
-                        channel1
+                        args.channel0,
+                        args.channel1
                     )
                 ) {
                     return upgradeSequence;
                 }
             } else {
                 if (
-                    !callbacks.openInitAndFlushing.callback(
+                    !args.callbacks.openInitAndFlushing.callback(
                         ibcHandler,
-                        channel1,
-                        channel0
+                        args.channel1,
+                        args.channel0
                     )
                 ) {
                     return upgradeSequence;
@@ -267,20 +270,20 @@ contract ICS04UpgradeBase is
         bool skipFlushCompleteAuthorization = false;
         {
             bool channel0SequenceMatch = ibcHandler.getNextSequenceSend(
-                channel0.portId,
-                channel0.channelId
+                args.channel0.portId,
+                args.channel0.channelId
             ) ==
                 ibcHandler.getNextSequenceAck(
-                    channel0.portId,
-                    channel0.channelId
+                    args.channel0.portId,
+                    args.channel0.channelId
                 );
             bool channel1SequenceMatch = ibcHandler.getNextSequenceSend(
-                channel1.portId,
-                channel1.channelId
+                args.channel1.portId,
+                args.channel1.channelId
             ) ==
                 ibcHandler.getNextSequenceAck(
-                    channel1.portId,
-                    channel1.channelId
+                    args.channel1.portId,
+                    args.channel1.channelId
                 );
             // If the channel is ORDERED and the all packets have been acknowledged, we can use the fast path to upgrade
             skipFlushCompleteAuthorization =
@@ -289,75 +292,77 @@ contract ICS04UpgradeBase is
                 channel1SequenceMatch;
         }
 
-        if (flow.fastPath && !skipFlushCompleteAuthorization) {
+        if (args.flow.fastPath && !skipFlushCompleteAuthorization) {
             // Ack@channel0: OPEN(INIT) -> FLUSHING
             assertTrue(
                 ibcHandler.channelUpgradeAck(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeAck({
-                        portId: channel0.portId,
-                        channelId: channel0.channelId,
+                        portId: args.channel0.portId,
+                        channelId: args.channel0.channelId,
                         counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel1.portId,
-                            channel1.channelId
+                            args.channel1.portId,
+                            args.channel1.channelId
                         ),
                         proofs: upgradeLocalhostProofs()
                     })
                 )
             );
+
             ensureChannelState(
                 ibcHandler,
-                channel0,
+                args.channel0,
                 Channel.State.STATE_FLUSHING
             );
             assertFalse(
                 ibcHandler.getCanTransitionToFlushComplete(
-                    channel0.portId,
-                    channel0.channelId
+                    args.channel0.portId,
+                    args.channel0.channelId
                 )
             );
             assertFalse(
                 ibcHandler.getCanTransitionToFlushComplete(
-                    channel1.portId,
-                    channel1.channelId
+                    args.channel1.portId,
+                    args.channel1.channelId
                 )
             );
             IIBCChannelUpgradableModule(
-                address(ibcHandler.getIBCModuleByPort(channel0.portId))
+                address(ibcHandler.getIBCModuleByPort(args.channel0.portId))
             ).allowTransitionToFlushComplete(
-                    channel0.portId,
-                    channel0.channelId,
+                    args.channel0.portId,
+                    args.channel0.channelId,
                     upgradeSequence
                 );
             assertTrue(
                 ibcHandler.getCanTransitionToFlushComplete(
-                    channel0.portId,
-                    channel0.channelId
+                    args.channel0.portId,
+                    args.channel0.channelId
                 )
             );
             IIBCChannelUpgradableModule(
-                address(ibcHandler.getIBCModuleByPort(channel1.portId))
+                address(ibcHandler.getIBCModuleByPort(args.channel1.portId))
             ).allowTransitionToFlushComplete(
-                    channel1.portId,
-                    channel1.channelId,
+                    args.channel1.portId,
+                    args.channel1.channelId,
                     upgradeSequence
                 );
             assertTrue(
                 ibcHandler.getCanTransitionToFlushComplete(
-                    channel1.portId,
-                    channel1.channelId
+                    args.channel1.portId,
+                    args.channel1.channelId
                 )
             );
         }
-        if (skipFlushCompleteAuthorization || flow.fastPath) {
+
+        if (skipFlushCompleteAuthorization || args.flow.fastPath) {
             // Ack@channel0: OPEN(INIT) or FLUSHING -> FLUSHCOMPLETE
             assertTrue(
                 ibcHandler.channelUpgradeAck(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeAck({
-                        portId: channel0.portId,
-                        channelId: channel0.channelId,
+                        portId: args.channel0.portId,
+                        channelId: args.channel0.channelId,
                         counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel1.portId,
-                            channel1.channelId
+                            args.channel1.portId,
+                            args.channel1.channelId
                         ),
                         proofs: upgradeLocalhostProofs()
                     })
@@ -365,7 +370,7 @@ contract ICS04UpgradeBase is
             );
             ensureChannelState(
                 ibcHandler,
-                channel0,
+                args.channel0,
                 Channel.State.STATE_FLUSHCOMPLETE
             );
 
@@ -373,50 +378,14 @@ contract ICS04UpgradeBase is
             assertTrue(
                 ibcHandler.channelUpgradeConfirm(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeConfirm({
-                        portId: channel1.portId,
-                        channelId: channel1.channelId,
+                        portId: args.channel1.portId,
+                        channelId: args.channel1.channelId,
                         counterpartyChannelState: Channel
                             .State
                             .STATE_FLUSHCOMPLETE,
                         counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel0.portId,
-                            channel0.channelId
-                        ),
-                        proofs: upgradeLocalhostProofs()
-                    })
-                )
-            );
-            ensureChannelState(ibcHandler, channel1, Channel.State.STATE_OPEN);
-
-            // Open@channel0: FLUSHCOMPLETE -> OPEN
-            ibcHandler.channelUpgradeOpen(
-                IIBCChannelUpgradeBase.MsgChannelUpgradeOpen({
-                    portId: channel0.portId,
-                    channelId: channel0.channelId,
-                    counterpartyChannelState: Channel.State.STATE_OPEN,
-                    counterpartyUpgradeSequence: upgradeSequence,
-                    proofChannel: LocalhostClientLib.sentinelProof(),
-                    proofHeight: H(getBlockNumber())
-                })
-            );
-            ensureChannelState(ibcHandler, channel0, Channel.State.STATE_OPEN);
-        } else if (
-            currentOrder == Channel.Order.ORDER_ORDERED &&
-            ibcHandler.getNextSequenceSend(
-                channel0.portId,
-                channel0.channelId
-            ) !=
-            ibcHandler.getNextSequenceAck(channel0.portId, channel0.channelId)
-        ) {
-            // Ack@channel0: OPEN(INIT) -> FLUSHING
-            assertTrue(
-                ibcHandler.channelUpgradeAck(
-                    IIBCChannelUpgradeBase.MsgChannelUpgradeAck({
-                        portId: channel0.portId,
-                        channelId: channel0.channelId,
-                        counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel1.portId,
-                            channel1.channelId
+                            args.channel0.portId,
+                            args.channel0.channelId
                         ),
                         proofs: upgradeLocalhostProofs()
                     })
@@ -424,39 +393,86 @@ contract ICS04UpgradeBase is
             );
             ensureChannelState(
                 ibcHandler,
-                channel0,
+                args.channel1,
+                Channel.State.STATE_OPEN
+            );
+
+            // Open@channel0: FLUSHCOMPLETE -> OPEN
+            ibcHandler.channelUpgradeOpen(
+                IIBCChannelUpgradeBase.MsgChannelUpgradeOpen({
+                    portId: args.channel0.portId,
+                    channelId: args.channel0.channelId,
+                    counterpartyChannelState: Channel.State.STATE_OPEN,
+                    counterpartyUpgradeSequence: upgradeSequence,
+                    proofChannel: LocalhostClientLib.sentinelProof(),
+                    proofHeight: H(getBlockNumber())
+                })
+            );
+            ensureChannelState(
+                ibcHandler,
+                args.channel0,
+                Channel.State.STATE_OPEN
+            );
+        } else if (
+            currentOrder == Channel.Order.ORDER_ORDERED &&
+            ibcHandler.getNextSequenceSend(
+                args.channel0.portId,
+                args.channel0.channelId
+            ) !=
+            ibcHandler.getNextSequenceAck(
+                args.channel0.portId,
+                args.channel0.channelId
+            )
+        ) {
+            // Ack@channel0: OPEN(INIT) -> FLUSHING
+            assertTrue(
+                ibcHandler.channelUpgradeAck(
+                    IIBCChannelUpgradeBase.MsgChannelUpgradeAck({
+                        portId: args.channel0.portId,
+                        channelId: args.channel0.channelId,
+                        counterpartyUpgrade: getCounterpartyUpgrade(
+                            args.channel1.portId,
+                            args.channel1.channelId
+                        ),
+                        proofs: upgradeLocalhostProofs()
+                    })
+                )
+            );
+            ensureChannelState(
+                ibcHandler,
+                args.channel0,
                 Channel.State.STATE_FLUSHING
             );
 
             assertFalse(
                 ibcHandler.getCanTransitionToFlushComplete(
-                    channel0.portId,
-                    channel0.channelId
+                    args.channel0.portId,
+                    args.channel0.channelId
                 )
             );
             IIBCChannelUpgradableModule(
-                address(ibcHandler.getIBCModuleByPort(channel0.portId))
+                address(ibcHandler.getIBCModuleByPort(args.channel0.portId))
             ).allowTransitionToFlushComplete(
-                    channel0.portId,
-                    channel0.channelId,
+                    args.channel0.portId,
+                    args.channel0.channelId,
                     upgradeSequence
                 );
             assertTrue(
                 ibcHandler.getCanTransitionToFlushComplete(
-                    channel0.portId,
-                    channel0.channelId
+                    args.channel0.portId,
+                    args.channel0.channelId
                 )
             );
             // Confirm@channel0: FLUSHING -> FLUSHCOMPLETE
             assertTrue(
                 ibcHandler.channelUpgradeConfirm(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeConfirm({
-                        portId: channel0.portId,
-                        channelId: channel0.channelId,
+                        portId: args.channel0.portId,
+                        channelId: args.channel0.channelId,
                         counterpartyChannelState: Channel.State.STATE_FLUSHING,
                         counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel1.portId,
-                            channel1.channelId
+                            args.channel1.portId,
+                            args.channel1.channelId
                         ),
                         proofs: upgradeLocalhostProofs()
                     })
@@ -464,7 +480,7 @@ contract ICS04UpgradeBase is
             );
             ensureChannelState(
                 ibcHandler,
-                channel0,
+                args.channel0,
                 Channel.State.STATE_FLUSHCOMPLETE
             );
 
@@ -472,50 +488,61 @@ contract ICS04UpgradeBase is
             assertTrue(
                 ibcHandler.channelUpgradeConfirm(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeConfirm({
-                        portId: channel1.portId,
-                        channelId: channel1.channelId,
+                        portId: args.channel1.portId,
+                        channelId: args.channel1.channelId,
                         counterpartyChannelState: Channel
                             .State
                             .STATE_FLUSHCOMPLETE,
                         counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel0.portId,
-                            channel0.channelId
+                            args.channel0.portId,
+                            args.channel0.channelId
                         ),
                         proofs: upgradeLocalhostProofs()
                     })
                 )
             );
-            ensureChannelState(ibcHandler, channel1, Channel.State.STATE_OPEN);
+            ensureChannelState(
+                ibcHandler,
+                args.channel1,
+                Channel.State.STATE_OPEN
+            );
 
             // Open@channel0: FLUSHCOMPLETE -> OPEN
             ibcHandler.channelUpgradeOpen(
                 IIBCChannelUpgradeBase.MsgChannelUpgradeOpen({
-                    portId: channel0.portId,
-                    channelId: channel0.channelId,
+                    portId: args.channel0.portId,
+                    channelId: args.channel0.channelId,
                     counterpartyChannelState: Channel.State.STATE_OPEN,
                     counterpartyUpgradeSequence: upgradeSequence,
                     proofChannel: LocalhostClientLib.sentinelProof(),
                     proofHeight: H(getBlockNumber())
                 })
             );
-            ensureChannelState(ibcHandler, channel0, Channel.State.STATE_OPEN);
+            ensureChannelState(
+                ibcHandler,
+                args.channel0,
+                Channel.State.STATE_OPEN
+            );
         } else if (
             currentOrder == Channel.Order.ORDER_ORDERED &&
             ibcHandler.getNextSequenceSend(
-                channel1.portId,
-                channel1.channelId
+                args.channel1.portId,
+                args.channel1.channelId
             ) !=
-            ibcHandler.getNextSequenceAck(channel1.portId, channel1.channelId)
+            ibcHandler.getNextSequenceAck(
+                args.channel1.portId,
+                args.channel1.channelId
+            )
         ) {
             // Ack@channel0: OPEN(INIT) -> FLUSHCOMPLETE
             assertTrue(
                 ibcHandler.channelUpgradeAck(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeAck({
-                        portId: channel0.portId,
-                        channelId: channel0.channelId,
+                        portId: args.channel0.portId,
+                        channelId: args.channel0.channelId,
                         counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel1.portId,
-                            channel1.channelId
+                            args.channel1.portId,
+                            args.channel1.channelId
                         ),
                         proofs: upgradeLocalhostProofs()
                     })
@@ -523,70 +550,41 @@ contract ICS04UpgradeBase is
             );
             ensureChannelState(
                 ibcHandler,
-                channel0,
+                args.channel0,
                 Channel.State.STATE_FLUSHCOMPLETE
             );
 
             assertFalse(
                 ibcHandler.getCanTransitionToFlushComplete(
-                    channel1.portId,
-                    channel1.channelId
+                    args.channel1.portId,
+                    args.channel1.channelId
                 )
             );
             IIBCChannelUpgradableModule(
-                address(ibcHandler.getIBCModuleByPort(channel1.portId))
+                address(ibcHandler.getIBCModuleByPort(args.channel1.portId))
             ).allowTransitionToFlushComplete(
-                    channel1.portId,
-                    channel1.channelId,
+                    args.channel1.portId,
+                    args.channel1.channelId,
                     upgradeSequence
                 );
             assertTrue(
                 ibcHandler.getCanTransitionToFlushComplete(
-                    channel1.portId,
-                    channel1.channelId
+                    args.channel1.portId,
+                    args.channel1.channelId
                 )
             );
             // Confirm@channel1: FLUSHING -> OPEN
             assertTrue(
                 ibcHandler.channelUpgradeConfirm(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeConfirm({
-                        portId: channel1.portId,
-                        channelId: channel1.channelId,
+                        portId: args.channel1.portId,
+                        channelId: args.channel1.channelId,
                         counterpartyChannelState: Channel
                             .State
                             .STATE_FLUSHCOMPLETE,
                         counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel0.portId,
-                            channel0.channelId
-                        ),
-                        proofs: upgradeLocalhostProofs()
-                    })
-                )
-            );
-            ensureChannelState(ibcHandler, channel1, Channel.State.STATE_OPEN);
-
-            // Open@channel0: FLUSHCOMPLETE -> OPEN
-            ibcHandler.channelUpgradeOpen(
-                IIBCChannelUpgradeBase.MsgChannelUpgradeOpen({
-                    portId: channel0.portId,
-                    channelId: channel0.channelId,
-                    counterpartyChannelState: Channel.State.STATE_OPEN,
-                    counterpartyUpgradeSequence: upgradeSequence,
-                    proofChannel: LocalhostClientLib.sentinelProof(),
-                    proofHeight: H(getBlockNumber())
-                })
-            );
-            ensureChannelState(ibcHandler, channel0, Channel.State.STATE_OPEN);
-        } else {
-            // Ack@channel0: OPEN(INIT) -> FLUSHING
-            assertTrue(
-                ibcHandler.channelUpgradeAck(
-                    IIBCChannelUpgradeBase.MsgChannelUpgradeAck({
-                        portId: channel0.portId,
-                        channelId: channel0.channelId,
-                        counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel1.portId,
-                            channel1.channelId
+                            args.channel0.portId,
+                            args.channel0.channelId
                         ),
                         proofs: upgradeLocalhostProofs()
                     })
@@ -594,25 +592,62 @@ contract ICS04UpgradeBase is
             );
             ensureChannelState(
                 ibcHandler,
-                channel0,
+                args.channel1,
+                Channel.State.STATE_OPEN
+            );
+
+            // Open@channel0: FLUSHCOMPLETE -> OPEN
+            ibcHandler.channelUpgradeOpen(
+                IIBCChannelUpgradeBase.MsgChannelUpgradeOpen({
+                    portId: args.channel0.portId,
+                    channelId: args.channel0.channelId,
+                    counterpartyChannelState: Channel.State.STATE_OPEN,
+                    counterpartyUpgradeSequence: upgradeSequence,
+                    proofChannel: LocalhostClientLib.sentinelProof(),
+                    proofHeight: H(getBlockNumber())
+                })
+            );
+            ensureChannelState(
+                ibcHandler,
+                args.channel0,
+                Channel.State.STATE_OPEN
+            );
+        } else {
+            // Ack@channel0: OPEN(INIT) -> FLUSHING
+            assertTrue(
+                ibcHandler.channelUpgradeAck(
+                    IIBCChannelUpgradeBase.MsgChannelUpgradeAck({
+                        portId: args.channel0.portId,
+                        channelId: args.channel0.channelId,
+                        counterpartyUpgrade: getCounterpartyUpgrade(
+                            args.channel1.portId,
+                            args.channel1.channelId
+                        ),
+                        proofs: upgradeLocalhostProofs()
+                    })
+                )
+            );
+            ensureChannelState(
+                ibcHandler,
+                args.channel0,
                 Channel.State.STATE_FLUSHING
             );
-            if (!callbacks.flushingAndFlushing.reverse) {
+            if (!args.callbacks.flushingAndFlushing.reverse) {
                 if (
-                    !callbacks.flushingAndFlushing.callback(
+                    !args.callbacks.flushingAndFlushing.callback(
                         ibcHandler,
-                        channel0,
-                        channel1
+                        args.channel0,
+                        args.channel1
                     )
                 ) {
                     return upgradeSequence;
                 }
             } else {
                 if (
-                    !callbacks.flushingAndFlushing.callback(
+                    !args.callbacks.flushingAndFlushing.callback(
                         ibcHandler,
-                        channel1,
-                        channel0
+                        args.channel1,
+                        args.channel0
                     )
                 ) {
                     return upgradeSequence;
@@ -624,12 +659,12 @@ contract ICS04UpgradeBase is
             assertTrue(
                 ibcHandler.channelUpgradeConfirm(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeConfirm({
-                        portId: channel1.portId,
-                        channelId: channel1.channelId,
+                        portId: args.channel1.portId,
+                        channelId: args.channel1.channelId,
                         counterpartyChannelState: Channel.State.STATE_FLUSHING,
                         counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel0.portId,
-                            channel0.channelId
+                            args.channel0.portId,
+                            args.channel0.channelId
                         ),
                         proofs: upgradeLocalhostProofs()
                     })
@@ -637,46 +672,46 @@ contract ICS04UpgradeBase is
             );
             ensureChannelState(
                 ibcHandler,
-                channel1,
+                args.channel1,
                 Channel.State.STATE_FLUSHING
             );
 
             {
                 (Channel.Data memory channel1Data, ) = ibcHandler.getChannel(
-                    channel1.portId,
-                    channel1.channelId
+                    args.channel1.portId,
+                    args.channel1.channelId
                 );
                 // Confirm@channel1: FLUSHING -> FLUSHCOMPLETE
                 assertFalse(
                     ibcHandler.getCanTransitionToFlushComplete(
-                        channel1.portId,
-                        channel1.channelId
+                        args.channel1.portId,
+                        args.channel1.channelId
                     )
                 );
                 IIBCChannelUpgradableModule(
-                    address(ibcHandler.getIBCModuleByPort(channel1.portId))
+                    address(ibcHandler.getIBCModuleByPort(args.channel1.portId))
                 ).allowTransitionToFlushComplete(
-                        channel1.portId,
-                        channel1.channelId,
+                        args.channel1.portId,
+                        args.channel1.channelId,
                         upgradeSequence
                     );
                 assertTrue(
                     ibcHandler.getCanTransitionToFlushComplete(
-                        channel1.portId,
-                        channel1.channelId
+                        args.channel1.portId,
+                        args.channel1.channelId
                     )
                 );
                 assertTrue(
                     ibcHandler.channelUpgradeConfirm(
                         IIBCChannelUpgradeBase.MsgChannelUpgradeConfirm({
-                            portId: channel1.portId,
-                            channelId: channel1.channelId,
+                            portId: args.channel1.portId,
+                            channelId: args.channel1.channelId,
                             counterpartyChannelState: Channel
                                 .State
                                 .STATE_FLUSHING,
                             counterpartyUpgrade: getCounterpartyUpgrade(
-                                channel0.portId,
-                                channel0.channelId
+                                args.channel0.portId,
+                                args.channel0.channelId
                             ),
                             proofs: upgradeLocalhostProofs()
                         })
@@ -684,25 +719,25 @@ contract ICS04UpgradeBase is
                 );
                 ensureChannelState(
                     ibcHandler,
-                    channel1,
+                    args.channel1,
                     Channel.State.STATE_FLUSHCOMPLETE
                 );
-                if (!callbacks.flushingAndComplete.reverse) {
+                if (!args.callbacks.flushingAndComplete.reverse) {
                     if (
-                        !callbacks.flushingAndComplete.callback(
+                        !args.callbacks.flushingAndComplete.callback(
                             ibcHandler,
-                            channel0,
-                            channel1
+                            args.channel0,
+                            args.channel1
                         )
                     ) {
                         return upgradeSequence;
                     }
                 } else {
                     if (
-                        !callbacks.flushingAndComplete.callback(
+                        !args.callbacks.flushingAndComplete.callback(
                             ibcHandler,
-                            channel1,
-                            channel0
+                            args.channel1,
+                            args.channel0
                         )
                     ) {
                         return upgradeSequence;
@@ -711,37 +746,37 @@ contract ICS04UpgradeBase is
 
                 assertFalse(
                     ibcHandler.getCanTransitionToFlushComplete(
-                        channel0.portId,
-                        channel0.channelId
+                        args.channel0.portId,
+                        args.channel0.channelId
                     )
                 );
                 IIBCChannelUpgradableModule(
-                    address(ibcHandler.getIBCModuleByPort(channel0.portId))
+                    address(ibcHandler.getIBCModuleByPort(args.channel0.portId))
                 ).allowTransitionToFlushComplete(
-                        channel0.portId,
-                        channel0.channelId,
+                        args.channel0.portId,
+                        args.channel0.channelId,
                         upgradeSequence
                     );
                 assertTrue(
                     ibcHandler.getCanTransitionToFlushComplete(
-                        channel0.portId,
-                        channel0.channelId
+                        args.channel0.portId,
+                        args.channel0.channelId
                     )
                 );
                 mockCallVerifyChannelState(
                     address(LocalhostHelper.getLocalhostClient(ibcHandler)),
-                    channel1,
+                    args.channel1,
                     channel1Data
                 );
                 // Confirm@channel0: FLUSHING -> FLUSHCOMPLETE
                 ibcHandler.channelUpgradeConfirm(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeConfirm({
-                        portId: channel0.portId,
-                        channelId: channel0.channelId,
+                        portId: args.channel0.portId,
+                        channelId: args.channel0.channelId,
                         counterpartyChannelState: Channel.State.STATE_FLUSHING,
                         counterpartyUpgrade: getCounterpartyUpgrade(
-                            channel1.portId,
-                            channel1.channelId
+                            args.channel1.portId,
+                            args.channel1.channelId
                         ),
                         proofs: upgradeLocalhostProofs()
                     })
@@ -749,22 +784,22 @@ contract ICS04UpgradeBase is
                 vm.clearMockedCalls();
             }
 
-            if (!callbacks.completeAndComplete.reverse) {
+            if (!args.callbacks.completeAndComplete.reverse) {
                 if (
-                    !callbacks.completeAndComplete.callback(
+                    !args.callbacks.completeAndComplete.callback(
                         ibcHandler,
-                        channel0,
-                        channel1
+                        args.channel0,
+                        args.channel1
                     )
                 ) {
                     return upgradeSequence;
                 }
             } else {
                 if (
-                    !callbacks.completeAndComplete.callback(
+                    !args.callbacks.completeAndComplete.callback(
                         ibcHandler,
-                        channel1,
-                        channel0
+                        args.channel1,
+                        args.channel0
                     )
                 ) {
                     return upgradeSequence;
@@ -773,31 +808,35 @@ contract ICS04UpgradeBase is
             // Open@channel0: FLUSHCOMPLETE -> OPEN
             ibcHandler.channelUpgradeOpen(
                 IIBCChannelUpgradeBase.MsgChannelUpgradeOpen({
-                    portId: channel0.portId,
-                    channelId: channel0.channelId,
+                    portId: args.channel0.portId,
+                    channelId: args.channel0.channelId,
                     counterpartyChannelState: Channel.State.STATE_FLUSHCOMPLETE,
                     counterpartyUpgradeSequence: upgradeSequence,
                     proofChannel: LocalhostClientLib.sentinelProof(),
                     proofHeight: H(getBlockNumber())
                 })
             );
-            ensureChannelState(ibcHandler, channel0, Channel.State.STATE_OPEN);
-            if (!callbacks.openSucAndComplete.reverse) {
+            ensureChannelState(
+                ibcHandler,
+                args.channel0,
+                Channel.State.STATE_OPEN
+            );
+            if (!args.callbacks.openSucAndComplete.reverse) {
                 if (
-                    !callbacks.openSucAndComplete.callback(
+                    !args.callbacks.openSucAndComplete.callback(
                         ibcHandler,
-                        channel0,
-                        channel1
+                        args.channel0,
+                        args.channel1
                     )
                 ) {
                     return upgradeSequence;
                 }
             } else {
                 if (
-                    !callbacks.openSucAndComplete.callback(
+                    !args.callbacks.openSucAndComplete.callback(
                         ibcHandler,
-                        channel1,
-                        channel0
+                        args.channel1,
+                        args.channel0
                     )
                 ) {
                     return upgradeSequence;
@@ -806,14 +845,14 @@ contract ICS04UpgradeBase is
 
             {
                 (Channel.Data memory ch0, ) = ibcHandler.getChannel(
-                    channel0.portId,
-                    channel0.channelId
+                    args.channel0.portId,
+                    args.channel0.channelId
                 );
                 // Open@channel1: FLUSHCOMPLETE -> OPEN
                 ibcHandler.channelUpgradeOpen(
                     IIBCChannelUpgradeBase.MsgChannelUpgradeOpen({
-                        portId: channel1.portId,
-                        channelId: channel1.channelId,
+                        portId: args.channel1.portId,
+                        channelId: args.channel1.channelId,
                         counterpartyChannelState: ch0.state,
                         counterpartyUpgradeSequence: ch0.upgrade_sequence,
                         proofChannel: LocalhostClientLib.sentinelProof(),
@@ -821,23 +860,27 @@ contract ICS04UpgradeBase is
                     })
                 );
             }
-            ensureChannelState(ibcHandler, channel1, Channel.State.STATE_OPEN);
-            if (!callbacks.openSucAndOpenSuc.reverse) {
+            ensureChannelState(
+                ibcHandler,
+                args.channel1,
+                Channel.State.STATE_OPEN
+            );
+            if (!args.callbacks.openSucAndOpenSuc.reverse) {
                 if (
-                    !callbacks.openSucAndOpenSuc.callback(
+                    !args.callbacks.openSucAndOpenSuc.callback(
                         ibcHandler,
-                        channel0,
-                        channel1
+                        args.channel0,
+                        args.channel1
                     )
                 ) {
                     return upgradeSequence;
                 }
             } else {
                 if (
-                    !callbacks.openSucAndOpenSuc.callback(
+                    !args.callbacks.openSucAndOpenSuc.callback(
                         ibcHandler,
-                        channel1,
-                        channel0
+                        args.channel1,
+                        args.channel0
                     )
                 ) {
                     return upgradeSequence;

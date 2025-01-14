@@ -190,7 +190,7 @@ const prepare = async (name: string, chains: Chain[]): Promise<Prepare> => {
 
   console.log("\n-- mint -----------");
   await receipt(lib.fillNativeToken(chains[0], aliceAddress, 3));
-  await receipt(lib.fillNativeToken(chains[1], await chains[1].bridge.getAddress(), 3));
+  await receipt(lib.fillBridgeNativeToken(chains[1], chains[1].bridge, 3));
   await receipt(chains[0].pooldata[0].pooledToken.mint(aliceAddress, pooledTokenAmount));
   const alicePooledToken = chains[0].pooldata[0].pooledToken.connect(alice);
   await receipt(alicePooledToken.approve(await chains[0].bridge.getAddress(), pooledTokenAmount));
@@ -316,7 +316,7 @@ export const testOuterService_fail_outOfGas = async (chains: Chain[]) => {
   dump(state0);
   const tt = await transferPool(chains, pre, {
     payload: new Uint8Array([39,40,41]),
-    dstOuterGas: ethers.parseUnits("0", "ether"),
+    dstOuterGas: ethers.parseUnits("1", "wei"),
   });
   console.log("seq=", tt.seq);
 

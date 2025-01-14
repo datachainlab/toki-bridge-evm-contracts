@@ -64,7 +64,7 @@ export const testSendCredit = async (chains: Chain[]) => {
       await receipt(src.bridge.sendCreditInLedger(srcPoolId, peerPool.pooldata.poolId));
     } else {
       const channelInfo = chains[0].channelInfo.find(ci => ci.chainId === peerPool.chainId)!;
-      const relayerFee = await lib.calcRelayerFee(src.chain, peerPool.chain, lib.FUNCTION_TYPE.SendCredit);
+      const relayerFee = await lib.calcRelayerFee(src.chain, peerPool.chain, lib.FUNCTION_TYPE.SendCredit, new Uint8Array(), 0);
       await receipt(src.bridge.sendCredit(channelInfo.channelId, srcPoolId, peerPool.pooldata.poolId, src.address, { value: relayerFee.toString() } ));
     }
   }

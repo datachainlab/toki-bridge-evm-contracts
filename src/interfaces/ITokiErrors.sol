@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.20;
+pragma solidity 0.8.28;
 
 interface ITokiErrors {
     error TokiZeroAddress(string message);
@@ -29,6 +29,7 @@ interface ITokiErrors {
 
     error TokiInvalidPacketType(uint8);
     error TokiInvalidRetryType(uint8);
+    error TokiInvalidRecipientBytes();
     error TokiNoRevertReceive();
     error TokiRetryExpired(uint256 expiryBlock);
     error TokiInvalidAppVersion(uint256 expected, uint256 actual);
@@ -47,11 +48,13 @@ interface ITokiErrors {
     error TokiPoolRecvIsFailed(uint256 poolId);
     error TokiPoolWithdrawConfirmIsFailed(uint256 poolId);
     error TokiPriceIsNotPositive(int256 value);
+    error TokiPriceIsExpired(uint256 updatedAt);
 
     error TokiDstChainIdNotAccepted(uint256 dstChainId);
 
     error TokiTransferIsStop();
     error TokiTransferIsFailed(address token, address to, uint256 value);
+    error TokiNativeTransferIsFailed(address to, uint256 value);
     error TokiPeerPoolIsNotReady(uint256 peerChainId, uint256 peerPoolId);
     error TokiSlippageTooHigh(
         uint256 amountGD,

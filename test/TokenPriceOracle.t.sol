@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/TokenPriceOracle.sol";
@@ -11,9 +11,13 @@ contract TokenPriceOracleTest is Test {
     address public empty = address(0x00);
 
     function setUp() public {
-        priceFeed = new MockPriceFeed(10000);
+        priceFeed = new MockPriceFeed(10000, 8);
         tokenPriceOracle = new TokenPriceOracle(10 * 1e14);
-        tokenPriceOracle.setPriceFeedAddress(0, address(priceFeed));
+        tokenPriceOracle.setPriceFeedAddress(
+            0,
+            address(priceFeed),
+            60 * 60 * 24
+        );
     }
 
     function testSetup() public {
@@ -45,8 +49,28 @@ contract TokenPriceOracleTest is Test {
     function testSetPriceFeedAddress() public {
         vm.expectEmit(true, true, false, true);
         emit TokenPriceOracle.SetPriceFeedAddress(1, address(priceFeed));
-        tokenPriceOracle.setPriceFeedAddress(1, address(priceFeed));
+        emit TokenPriceOracle.SetValidityPeriod(1, 60 * 60 * 24);
+        tokenPriceOracle.setPriceFeedAddress(
+            1,
+            address(priceFeed),
+            60 * 60 * 24
+        );
         assertEq(tokenPriceOracle.getPriceFeedAddress(1), address(priceFeed));
+        assertEq(tokenPriceOracle.getValidityPeriod(1), 60 * 60 * 24);
+    }
+
+    function testPriceFeedDecimals() public {
+        MockPriceFeed priceFeed0 = new MockPriceFeed(10000, 0);
+        MockPriceFeed priceFeed8 = new MockPriceFeed(10000, 8);
+        MockPriceFeed priceFeed18 = new MockPriceFeed(10000, 18);
+
+        tokenPriceOracle.setPriceFeedAddress(0, address(priceFeed0), 3600);
+        tokenPriceOracle.setPriceFeedAddress(8, address(priceFeed8), 3600);
+        tokenPriceOracle.setPriceFeedAddress(18, address(priceFeed18), 3600);
+
+        assertEq(tokenPriceOracle.getPriceFeedDecimals(0), 0, "dec 0");
+        assertEq(tokenPriceOracle.getPriceFeedDecimals(8), 8, "dec 8");
+        assertEq(tokenPriceOracle.getPriceFeedDecimals(18), 18, "dec 18");
     }
 
     function testSetPriceFeedAddressFailWithPriceFeedZeroAddress() public {
@@ -56,7 +80,7 @@ contract TokenPriceOracleTest is Test {
                 "priceFeedAddress"
             )
         );
-        tokenPriceOracle.setPriceFeedAddress(1, empty);
+        tokenPriceOracle.setPriceFeedAddress(1, empty, 60 * 60 * 24);
     }
 
     function testSetPriceFeedAddressRevertsWhenSenderIsNotAdmin() public {
@@ -68,7 +92,30 @@ contract TokenPriceOracleTest is Test {
             )
         );
         vm.prank(address(0x01));
-        tokenPriceOracle.setPriceFeedAddress(2, address(priceFeed));
+        tokenPriceOracle.setPriceFeedAddress(
+            2,
+            address(priceFeed),
+            60 * 60 * 24
+        );
+    }
+
+    function testSetValidityPeriod() public {
+        vm.expectEmit(true, true, false, true);
+        emit TokenPriceOracle.SetValidityPeriod(0, 3939);
+        tokenPriceOracle.setValidityPeriod(0, 3939);
+        assertEq(tokenPriceOracle.getValidityPeriod(0), 3939);
+    }
+
+    function testSetValidityPeriodRevertsWhenSenderIsNotAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(0x01),
+                tokenPriceOracle.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        vm.prank(address(0x01));
+        tokenPriceOracle.setValidityPeriod(0, 3939);
     }
 
     function testGetLatestPrice() public {
@@ -95,6 +142,24 @@ contract TokenPriceOracleTest is Test {
                 ITokiErrors.TokiPriceIsNotPositive.selector,
                 -1
             )
+        );
+        tokenPriceOracle.getLatestPrice(0);
+    }
+
+    function testGetLatestPriceRevertsWhenValidityPeriodExpired() public {
+        // note that MockPriceFeed always returns 0 as updatedAt
+        tokenPriceOracle.setValidityPeriod(0, 100);
+
+        skip(1000);
+        rewind(block.timestamp - 100);
+        assertEq(block.timestamp, 100);
+        tokenPriceOracle.getLatestPrice(0); // pass
+
+        skip(1000);
+        rewind(block.timestamp - 101);
+        assertEq(block.timestamp, 101);
+        vm.expectRevert(
+            abi.encodeWithSelector(ITokiErrors.TokiPriceIsExpired.selector, 0)
         );
         tokenPriceOracle.getLatestPrice(0);
     }

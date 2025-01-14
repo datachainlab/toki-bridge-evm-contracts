@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
@@ -66,6 +66,11 @@ contract Pool is
         bool _transferStop; // flag to stop transfer in extreme cases
         uint256 _maxTotalDeposits; // The maximum deposits that each pool will hold by LD-unit
     }
+
+    // The maximum number of peer pool.
+    // This limitation prevents _deltaSourceUpdate from exceeding the block gas limit.
+    // The amount of gas for _deltaSourceUpdate increases by about 20k as peer increases.
+    uint256 public constant MAX_PEERS = 100;
 
     // keccak256(abi.encode(uint256(keccak256("toki.storage.Pool")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant POOL_LOCATION =
@@ -159,6 +164,9 @@ contract Pool is
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         PoolStorage storage $ = _getPoolStorage();
         uint256 length = $._peerPoolInfos.length;
+        if (MAX_PEERS <= length) {
+            revert TokiExceed("PeerPool", length + 1, MAX_PEERS);
+        }
         for (uint256 i = 0; i < length; ++i) {
             PeerPoolInfo memory peerPoolInfo = $._peerPoolInfos[i];
             bool exists = peerPoolInfo.chainId == peerChainId &&
@@ -391,17 +399,16 @@ contract Pool is
         if (feeInfo.eqReward > 0) {
             $._eqFeePool -= feeInfo.eqReward;
         }
-        // lastKnowBalnace calculated by fee.
-        feeInfo.lastKnownBalance = amountGD - feeInfo.lpFee + feeInfo.eqReward;
+        feeInfo.balanceDecrease = amountGD - feeInfo.lpFee + feeInfo.eqReward;
 
         // delta algorithm 1-5 lines
-        if (peerPoolInfo.balance < amountGD) {
+        if (peerPoolInfo.balance < feeInfo.balanceDecrease) {
             revert TokiInsufficientPoolLiquidity(
                 peerPoolInfo.balance,
-                amountGD
+                feeInfo.balanceDecrease
             );
         }
-        peerPoolInfo.balance = peerPoolInfo.balance - feeInfo.lastKnownBalance;
+        peerPoolInfo.balance = peerPoolInfo.balance - feeInfo.balanceDecrease;
 
         if (newLiquidity) {
             $._deltaCredit = $._deltaCredit + amountGD + feeInfo.eqReward;
@@ -446,19 +453,13 @@ contract Pool is
     {
         PoolStorage storage $ = _getPoolStorage();
         if (updateDelta) {
-            $._totalLiquidity += feeInfo.lpFee;
-            $._eqFeePool += feeInfo.eqFee;
-            $._feeBalance += feeInfo.protocolFee;
-
+            _recvFees($, feeInfo);
             // delta algorithm 21-24 lines -> updateCredit
-
-            PeerPoolInfo storage peerPoolInfo = _getAndCheckPeerPoolInfo(
+            _decreaseLastKnownBalance(
                 peerChainId,
-                peerPoolId
+                peerPoolId,
+                feeInfo.balanceDecrease
             );
-            peerPoolInfo.lastKnownBalance =
-                peerPoolInfo.lastKnownBalance -
-                feeInfo.lastKnownBalance;
         }
 
         // user receives the amount + the srcReward
@@ -575,6 +576,9 @@ contract Pool is
         emit WithdrawCheck(peerChainId, peerPoolId, amountSwap, amountMint);
     }
 
+    /**
+     * @dev even when updateDelta is true, lp token will not be re-minted if to is zero address.
+     */
     function withdrawConfirm(
         uint256 peerChainId,
         uint256 peerPoolId,
@@ -588,20 +592,13 @@ contract Pool is
         onlyRole(DEFAULT_ROUTER_ROLE)
         returns (bool isTransferred)
     {
-        PoolStorage storage $ = _getPoolStorage();
         if (updateDelta) {
-            // 1. mint lp token on local
-            if (amountToMintGD > 0) {
+            // 1. mint lp token on local if possible
+            if (amountToMintGD > 0 && to != address(0x0)) {
                 _mintLPbyLD(to, _GDToLD(amountToMintGD), false);
             }
             // 2. update last known balance
-            PeerPoolInfo storage peerPoolInfo = _getAndCheckPeerPoolInfo(
-                peerChainId,
-                peerPoolId
-            );
-            peerPoolInfo.lastKnownBalance =
-                peerPoolInfo.lastKnownBalance -
-                amountGD;
+            _decreaseLastKnownBalance(peerChainId, peerPoolId, amountGD);
         }
 
         // 3. transfer asset token to _to
@@ -611,6 +608,7 @@ contract Pool is
             passed = _checkAndUpdateFlowRateLimit(amountLD);
         }
 
+        PoolStorage storage $ = _getPoolStorage();
         if (passed && _safeTransfer($._token, to, amountLD)) {
             isTransferred = true;
 
@@ -705,6 +703,42 @@ contract Pool is
         uint256 amountLD = _GDToLD(amountGD);
         _safeTransferWithRevert($._token, to, amountLD);
         emit WithdrawInstant(from, amountLP, amountGD, to);
+    }
+
+    /**
+     * @dev Receives delta info and fees from the peer pool to keep the delta consistent.
+     */
+    function handleRecvFailure(
+        uint256 peerChainId,
+        uint256 peerPoolId,
+        address /* to */,
+        ITransferPoolFeeCalculator.FeeInfo memory feeInfo
+    ) public nonReentrant onlyRole(DEFAULT_ROUTER_ROLE) {
+        PoolStorage storage $ = _getPoolStorage();
+        _recvFees($, feeInfo);
+        _decreaseLastKnownBalance(
+            peerChainId,
+            peerPoolId,
+            feeInfo.balanceDecrease
+        );
+    }
+
+    /**
+     * @dev Receive delta info ( and re-mint lp token ) to keep the delta consistent.
+     */
+    function handleWithdrawConfirmFailure(
+        uint256 peerChainId,
+        uint256 peerPoolId,
+        address to,
+        uint256 amountGD,
+        uint256 amountToMintGD
+    ) public nonReentrant onlyRole(DEFAULT_ROUTER_ROLE) {
+        // 1. mint lp token on local if possible
+        if (amountToMintGD > 0 && to != address(0x0)) {
+            _mintLPbyLD(to, _GDToLD(amountToMintGD), false);
+        }
+        // 2. update last known balance
+        _decreaseLastKnownBalance(peerChainId, peerPoolId, amountGD);
     }
 
     // ========================== view functions ===================================
@@ -961,8 +995,9 @@ contract Pool is
                     for (uint256 i = 0; i < peerPoolInfosLength; ++i) {
                         PeerPoolInfo storage peerPoolInfo = $._peerPoolInfos[i];
                         // credits = credits + diff[i] + exceedCredit * (weight / totalWeight)
-                        uint256 amtToCredit = (excessCredit *
-                            peerPoolInfo.weight) / $._totalWeight;
+                        uint256 amtToCredit = diff[i] +
+                            (excessCredit * peerPoolInfo.weight) /
+                            $._totalWeight;
                         spent = spent + amtToCredit;
                         peerPoolInfo.credits =
                             peerPoolInfo.credits +
@@ -987,6 +1022,29 @@ contract Pool is
             // deltaCredit spent.
             $._deltaCredit = $._deltaCredit - spent;
         }
+    }
+
+    function _decreaseLastKnownBalance(
+        uint256 peerChainId,
+        uint256 peerPoolId,
+        uint256 amountGD
+    ) internal {
+        PeerPoolInfo storage peerPoolInfo = _getAndCheckPeerPoolInfo(
+            peerChainId,
+            peerPoolId
+        );
+        peerPoolInfo.lastKnownBalance =
+            peerPoolInfo.lastKnownBalance -
+            amountGD;
+    }
+
+    function _recvFees(
+        PoolStorage storage $,
+        ITransferPoolFeeCalculator.FeeInfo memory feeInfo
+    ) internal {
+        $._totalLiquidity += feeInfo.lpFee;
+        $._eqFeePool += feeInfo.eqFee;
+        $._feeBalance += feeInfo.protocolFee;
     }
 
     function _authorizeUpgrade(

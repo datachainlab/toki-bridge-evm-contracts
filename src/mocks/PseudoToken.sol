@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -23,6 +23,7 @@ contract PseudoToken is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(uint8 decimals_) {
         DECIMALS = decimals_;
+        _disableInitializers();
     }
 
     function initialize(

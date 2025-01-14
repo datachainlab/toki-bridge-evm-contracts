@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "./ITransferPoolFeeCalculator.sol";
 import "./IDecimalConvertible.sol";
@@ -487,6 +487,27 @@ interface IPool is IDecimalConvertible, IStaticFlowRateLimiter {
         uint256 amountLP,
         address to
     ) external returns (uint256 amountGD);
+
+    /**
+     * @dev Handles failure of recv
+     */
+    function handleRecvFailure(
+        uint256 peerChainId,
+        uint256 peerPoolId,
+        address to,
+        ITransferPoolFeeCalculator.FeeInfo memory feeInfo
+    ) external;
+
+    /**
+     * @dev Handles failure of withdrawConfirm
+     */
+    function handleWithdrawConfirmFailure(
+        uint256 peerChainId,
+        uint256 peerPoolId,
+        address to,
+        uint256 amountGD,
+        uint256 amountToMintGD
+    ) external;
 
     /**
      * @dev Calculates the delta.

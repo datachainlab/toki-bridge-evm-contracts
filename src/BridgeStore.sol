@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@hyperledger-labs/yui-ibc-solidity/contracts/core/04-channel/IIBCChannel.sol";
 import {ShortString} from "@openzeppelin/contracts/utils/ShortStrings.sol";
@@ -53,6 +53,11 @@ abstract contract BridgeStore is ITokiErrors {
         0x183a6125c38840424c4a85fa12bab2ab606c4b6d0e7cc73c0c06ba5300eab500;
 
     uint256 internal constant RISK_BPS = 10_000;
+
+    uint256 internal constant MAX_TO_LENGTH = 1024; // 1KB
+    // the maximum length of the ExternalInfo.payload that can be sent in a packet
+    uint256 internal constant MAX_PAYLOAD_LENGTH = 10 * 1024; // 10KB
+
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint256 internal immutable APP_VERSION;
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable

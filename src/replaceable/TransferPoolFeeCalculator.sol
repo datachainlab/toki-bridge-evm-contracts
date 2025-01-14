@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -201,6 +201,9 @@ contract TransferPoolFeeCalculator is
         return protocolFee;
     }
 
+    /**
+     * @dev Calculate the drift protocol fee, which is the fee charged when the source pool price is lower than the destination pool price.
+     */
     function getDriftProtocolFee(
         uint256 srcPoolId,
         uint256 dstPoolId,
@@ -209,17 +212,22 @@ contract TransferPoolFeeCalculator is
         if (srcPoolId == dstPoolId) {
             return 0;
         }
-        IStableTokenPriceOracle.PriceDeviationStatus srcStatus = stableTokenPriceOracle
-                .getCurrentPriceDeviationStatus(srcPoolId);
-        if (srcStatus == IStableTokenPriceOracle.PriceDeviationStatus.Normal) {
-            return 0;
+        (uint256 srcPrice, uint8 srcDecimals) = stableTokenPriceOracle
+            .getCurrentPriceAndDecimals(srcPoolId);
+        (uint256 dstPrice, uint8 dstDecimals) = stableTokenPriceOracle
+            .getCurrentPriceAndDecimals(dstPoolId);
+
+        // Make each price is under same decimals.
+        if (srcDecimals < dstDecimals) {
+            srcPrice = srcPrice * (10 ** (dstDecimals - srcDecimals));
+        } else {
+            dstPrice = dstPrice * (10 ** (srcDecimals - dstDecimals));
         }
-        uint256 srcPrice = stableTokenPriceOracle.getCurrentPrice(srcPoolId);
-        uint256 dstPrice = stableTokenPriceOracle.getCurrentPrice(dstPoolId);
+
         if (srcPrice >= dstPrice) {
             return 0;
         }
-        return (amountGD * srcPrice) / dstPrice;
+        return (amountGD * (dstPrice - srcPrice)) / dstPrice;
     }
 
     // todo: by the time TOKI Token is released, it is necessary to be able to pass USD/ETH pair into TransferPoolFeeCalculator in e2e if there are multiple instances.

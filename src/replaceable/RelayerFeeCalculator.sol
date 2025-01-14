@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../interfaces/ITokiErrors.sol";
@@ -7,6 +7,7 @@ import "../interfaces/ITokenPriceOracle.sol";
 import "../interfaces/IGasPriceOracle.sol";
 import "../interfaces/IRelayerFeeCalculator.sol";
 import "../library/MessageType.sol";
+import "../library/IBCUtils.sol";
 
 contract RelayerFeeCalculator is
     ITokiErrors,
@@ -17,6 +18,7 @@ contract RelayerFeeCalculator is
     address public gasPriceOracle;
     uint256 public premiumBPS;
     uint256 public gasUsed;
+    uint256 public gasPerPayloadLength;
 
     /* ========== EVENTS ========== */
     event SetTokenPriceOracle(address oracle);
@@ -25,12 +27,15 @@ contract RelayerFeeCalculator is
 
     event SetGasUsed(uint256 gasUsed);
 
+    event SetGasPerPayloadLength(uint256 gasPerPayloadLength);
+
     event SetPremiumBPS(uint256 premiumBPS);
 
     constructor(
         address tokenPriceOracle_,
         address gasPriceOracle_,
         uint256 gasUsed_,
+        uint256 gasPerPayloadLength_,
         uint256 premiumBPS_
     ) {
         if (tokenPriceOracle_ == address(0)) {
@@ -43,6 +48,7 @@ contract RelayerFeeCalculator is
         tokenPriceOracle = tokenPriceOracle_;
         gasPriceOracle = gasPriceOracle_;
         gasUsed = gasUsed_;
+        gasPerPayloadLength = gasPerPayloadLength_;
         premiumBPS = premiumBPS_;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -75,6 +81,13 @@ contract RelayerFeeCalculator is
         emit SetGasUsed(gasUsed);
     }
 
+    function setGasPerPayloadLength(
+        uint256 gasPerPayloadLength_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        gasPerPayloadLength = gasPerPayloadLength_;
+        emit SetGasPerPayloadLength(gasPerPayloadLength);
+    }
+
     function setPremiumBPS(
         uint256 premiumBPS_
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -83,9 +96,17 @@ contract RelayerFeeCalculator is
     }
 
     // --- interface functions -----------------------
+    /**
+     * @dev Calculate the estimated gas cost on the destination chain for the relayer
+     * @param messageType message type
+     * @param dstChainId destination chain id
+     * @param externalInfo external info
+     * @return relayerFee fee for the relayer
+     */
     function calcFee(
         uint8 messageType,
-        uint256 dstChainId
+        uint256 dstChainId,
+        IBCUtils.ExternalInfo memory externalInfo
     ) external view returns (RelayerFee memory relayerFee) {
         if (dstChainId == block.chainid) {
             return relayerFee;
@@ -94,32 +115,74 @@ contract RelayerFeeCalculator is
             return relayerFee;
         }
 
-        relayerFee.dstTokenPrice = ITokenPriceOracle(tokenPriceOracle).getPrice(
-            dstChainId
-        );
+        (
+            relayerFee.dstTokenPrice,
+            relayerFee.dstTokenDecimals
+        ) = ITokenPriceOracle(tokenPriceOracle).getPriceAndDecimals(dstChainId);
         relayerFee.dstGasPrice = IGasPriceOracle(gasPriceOracle).getPrice(
             dstChainId
         );
-        relayerFee.srcTokenPrice = ITokenPriceOracle(tokenPriceOracle).getPrice(
+        (
+            relayerFee.srcTokenPrice,
+            relayerFee.srcTokenDecimals
+        ) = ITokenPriceOracle(tokenPriceOracle).getPriceAndDecimals(
             block.chainid
         );
+
         if (relayerFee.srcTokenPrice == 0) {
             revert TokiZeroValue("srcTokenPrice");
         }
 
+        // The gas fee in src chain native token is:
+        //  `feeInSrcToken = dstGasFeeInDstToken * dstTokenPriceValue / srcTokenPriceValue`
+        // Note that tokenPriceValue is combined mantissa and decimals:
+        //  `tokenPriceValue = tokenPrice / (10 ** tokenPriceDecimals)
+        // so the fee is:
+        //  `feeInSrcToken = (dstGasFeeInDstToken * dstTokenPrice / srcTokenPrice) * (10 ** (srcTokenDecimals - dstTokenDecimals))`
+        // We first calculating `10 ** (srcTokenDecimals - dstTokenDecimals)` part in fraction format.
+        (
+            uint256 decimalRatioNumerator,
+            uint256 decimalRatioDenominator
+        ) = (relayerFee.dstTokenDecimals < relayerFee.srcTokenDecimals)
+                ? (
+                    10 **
+                        (relayerFee.srcTokenDecimals -
+                            relayerFee.dstTokenDecimals),
+                    uint256(1)
+                )
+                : (
+                    uint256(1),
+                    10 **
+                        (relayerFee.dstTokenDecimals -
+                            relayerFee.srcTokenDecimals)
+                );
+        uint256 gas = gasUsed;
+        // these two message types need to calculate the gas cost based on the payload length and the dstOuterGas
+        if (
+            messageType == MessageType._TYPE_TRANSFER_POOL ||
+            messageType == MessageType._TYPE_TRANSFER_TOKEN
+        ) {
+            gas +=
+                gasPerPayloadLength *
+                externalInfo.payload.length +
+                externalInfo.dstOuterGas;
+        }
+
         relayerFee.fee =
-            (gasUsed *
+            (gas *
                 relayerFee.dstGasPrice *
                 premiumBPS *
-                relayerFee.dstTokenPrice) /
-            (10000 * relayerFee.srcTokenPrice);
+                relayerFee.dstTokenPrice *
+                decimalRatioNumerator) /
+            (10000 * relayerFee.srcTokenPrice * decimalRatioDenominator);
+
         if (messageType == MessageType._TYPE_WITHDRAW) {
             relayerFee.srcGasPrice = IGasPriceOracle(gasPriceOracle).getPrice(
                 block.chainid
             );
             relayerFee.fee =
                 relayerFee.fee +
-                (gasUsed * relayerFee.srcGasPrice * premiumBPS) /
+                (gas * relayerFee.srcGasPrice * premiumBPS) /
                 10000;
         }
     }

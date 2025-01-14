@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "./BridgeBase.sol";
 import "./interfaces/IBridgeQuerier.sol";
@@ -7,24 +7,24 @@ import "./interfaces/IBridgeQuerier.sol";
 contract BridgeQuerier is BridgeBase, IBridgeQuerier {
     function calcSrcNativeAmount(
         uint256 dstChainId,
-        uint256 dstGas,
         uint256 dstNativeAmount
     ) external view returns (uint256) {
         BridgeStorage storage $ = getBridgeStorage();
-        uint256 srcTokenPrice = $.tokenPriceOracle.getLatestPrice(
-            block.chainid
-        );
-        uint256 dstTokenPrice = $.tokenPriceOracle.getLatestPrice(dstChainId);
-        uint256 dstGasPrice = $.relayerFeeCalculator.getGasPrice(dstChainId);
+        (uint256 srcTokenPrice, uint8 srcTokenDecimals) = $
+            .tokenPriceOracle
+            .getLatestPriceAndDecimals(block.chainid);
+        (uint256 dstTokenPrice, uint8 dstTokenDecimals) = $
+            .tokenPriceOracle
+            .getLatestPriceAndDecimals(dstChainId);
         uint256 riskBPS = $.premiumBPS[dstChainId];
 
         return
             _calcSrcNativeAmount(
-                dstGas,
                 dstNativeAmount,
                 srcTokenPrice,
+                srcTokenDecimals,
                 dstTokenPrice,
-                dstGasPrice,
+                dstTokenDecimals,
                 riskBPS
             );
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -13,6 +13,28 @@ contract UpgradedETHVault is ETHVault {
 
     function setTestValue(uint256 value) public {
         testValue = value;
+    }
+}
+
+contract Reentrant {
+    ETHVault public ethVault;
+    constructor(ETHVault _ethVault) {
+        ethVault = _ethVault;
+    }
+
+    receive() external payable {
+        uint256 balance = ethVault.balanceOf(address(this));
+        if (balance > 0 && ethVault.totalSupply() >= balance) {
+            ethVault.withdraw(balance);
+        }
+    }
+
+    function deposit() public payable {
+        ethVault.deposit{value: msg.value}();
+    }
+
+    function withdraw(uint256 amount) public {
+        ethVault.withdraw(amount);
     }
 }
 
@@ -81,6 +103,24 @@ contract ETHVaultTest is Test {
         assertEq(ethVault.totalSupply(), 0);
     }
 
+    function testWithdrawPreventReentrant() public {
+        vm.deal(alice, 100 wei);
+        vm.prank(alice);
+        ethVault.deposit{value: 100 wei}();
+
+        Reentrant reentrant = new Reentrant(ethVault);
+        reentrant.deposit{value: 10 wei}();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiNativeTransferIsFailed.selector,
+                address(reentrant),
+                6 wei
+            )
+        );
+        reentrant.withdraw(6 wei);
+    }
+
     function testWithdrawRevertsWhenSenderIsZeroAddress() public {
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -125,6 +165,29 @@ contract ETHVaultTest is Test {
         );
         vm.prank(alice);
         ethVault.setNoUnwrapTo(alice);
+    }
+
+    function testResetNoUnwrapTo() public {
+        vm.expectEmit(true, false, false, true);
+        emit ETHVault.SetNoUnwrapTo(alice);
+        ethVault.setNoUnwrapTo(alice);
+        assertEq(ethVault.noUnwrapTo(alice), true);
+
+        vm.expectEmit(true, false, false, true);
+        emit ETHVault.ResetNoUnwrapTo(alice);
+        ethVault.resetNoUnwrapTo(alice);
+        assertEq(ethVault.noUnwrapTo(alice), false);
+    }
+
+    function testResetNoUnwrapToRevertsWhenSenderIsNotOwner() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                OwnableUpgradeable.OwnableUnauthorizedAccount.selector,
+                alice
+            )
+        );
+        vm.prank(alice);
+        ethVault.resetNoUnwrapTo(alice);
     }
 
     function testTransfer() public {

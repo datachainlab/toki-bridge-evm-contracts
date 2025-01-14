@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "../interfaces/IBridgeRouter.sol";
 
@@ -9,7 +9,7 @@ import "../interfaces/IBridgeRouter.sol";
 contract MockBridgeRouter is IBridgeEnhancedRouter {
     function callDelta(uint256, bool) external {}
 
-    function deposit(uint256, uint256, address) external payable {}
+    function deposit(uint256, uint256, address) external {}
 
     function transferPool(
         string calldata,

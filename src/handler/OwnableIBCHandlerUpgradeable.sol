@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import {ILightClient} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/02-client/ILightClient.sol";
 import {IIBCClient} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/02-client/IIBCClient.sol";
@@ -37,7 +37,9 @@ contract OwnableIBCHandlerUpgradeable is
             ibcChannelUpgradeInitTryAck_,
             ibcChannelUpgradeConfirmOpenTimeoutCancel_
         )
-    {}
+    {
+        _disableInitializers();
+    }
 
     function initialize() public initializer {
         __UUPSUpgradeable_init();

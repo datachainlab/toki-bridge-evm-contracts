@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "../PoolRepository.sol";
 import "../library/IBCUtils.sol";
@@ -89,6 +89,12 @@ interface IBridgeManager {
         uint64 withdrawRetryBlocks,
         uint64 externalRetryBlocks
     );
+
+    /**
+     * @dev Emitted by refill.
+     * @param amount The amount of native asset.
+     */
+    event Refill(uint256 amount);
 
     /**
      * @dev Emitted by draw.
@@ -186,6 +192,11 @@ interface IBridgeManager {
         uint64 withdrawBlocks,
         uint64 externalBlocks
     ) external;
+
+    /**
+     * @dev transfer native token to Bridge to work its service.
+     */
+    function refill() external payable;
 
     /**
      * @dev Draws the native asset.

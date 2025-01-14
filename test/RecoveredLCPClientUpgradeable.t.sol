@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import {IERC1967} from "@openzeppelin/contracts/interfaces/IERC1967.sol";
@@ -160,6 +160,48 @@ contract RecoveredLCPClientUpgradeableTest is Test {
 
         vm.prank(notOwner);
         t.upgradeToAndCall(newImpl, callData);
+    }
+
+    function testUpgradeWhenSenderIsOwner() public {
+        MockIBCClient newIBCClient = new MockIBCClient();
+        address newImpl = address(
+            new RecoveredLCPClientUpgradeable(address(newIBCClient), true, 2)
+        );
+
+        vm.expectEmit(address(t));
+        emit IERC1967.Upgraded(newImpl);
+        t.upgradeToAndCall(newImpl, "");
+
+        RecoveredLCPClientUpgradeable client = RecoveredLCPClientUpgradeable(
+            address(t)
+        );
+
+        client.upgrade(newClientState, newConsensusState);
+    }
+
+    function testUpgradeCallRevertsWhenSenderIsNotOwner() public {
+        MockIBCClient newIBCClient = new MockIBCClient();
+        address newImpl = address(
+            new RecoveredLCPClientUpgradeable(address(newIBCClient), true, 2)
+        );
+
+        vm.expectEmit(address(t));
+        emit IERC1967.Upgraded(newImpl);
+        t.upgradeToAndCall(newImpl, "");
+
+        RecoveredLCPClientUpgradeable client = RecoveredLCPClientUpgradeable(
+            address(t)
+        );
+
+        address notOwner = makeAddr("NotOwner");
+        vm.prank(notOwner);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                OwnableUpgradeable.OwnableUnauthorizedAccount.selector,
+                notOwner
+            )
+        );
+        client.upgrade(newClientState, newConsensusState);
     }
 
     function testUpgradeToAndCallRevertsWhenContractHasAlreadyUpgraded()

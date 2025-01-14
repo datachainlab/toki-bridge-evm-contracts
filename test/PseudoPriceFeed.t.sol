@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -9,7 +9,7 @@ contract PseudoPriceFeedTest is Test {
     PseudoPriceFeed public t;
 
     function setUp() public {
-        t = new PseudoPriceFeed(100);
+        t = new PseudoPriceFeed(100, 8);
     }
 
     function testSetPrice() public {
@@ -30,6 +30,7 @@ contract PseudoPriceFeedTest is Test {
     }
 
     function testLatestRoundData() public {
+        skip(1000);
         (
             uint80 roundId,
             int256 answer,
@@ -39,8 +40,8 @@ contract PseudoPriceFeedTest is Test {
         ) = t.latestRoundData();
         assertEq(roundId, 0);
         assertEq(answer, 100);
-        assertEq(startedAt, 0);
-        assertEq(updatedAt, 0);
+        assertEq(startedAt, block.timestamp - 600);
+        assertEq(updatedAt, block.timestamp - 600);
         assertEq(answeredInRound, 0);
     }
 }

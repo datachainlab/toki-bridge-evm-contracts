@@ -133,7 +133,9 @@ export const FUNCTION_TYPE = {
 export const calcRelayerFee = async (
   src: Chain,
   dst: Chain,
-  ftype: number
+  ftype: number,
+  payload: Uint8Array,
+  dstOuterGas: number,
 ): Promise<bigint> => {
   const calc = await toki.tt.RelayerFeeCalculator__factory.connect(
     await src.bridge.relayerFeeCalculator(),
@@ -156,17 +158,16 @@ export const calcRelayerFee = async (
 
   //console.log({gasUsed, premiumBPS, dstTokenPrice, dstGasPrice, srcTokenPrice});
 
-  const fee = await calc.calcFee(ftype, dst.chainId);
+  const fee = await calc.calcFee(ftype, dst.chainId, {payload, dstOuterGas});
   return fee.fee;
 };
 
 export const calcSrcNativeAmount = async (
   src: Chain,
   dst: Chain,
-  gas: bigint,
   amount: bigint
 ): Promise<bigint> => {
-  return src.bridge.calcSrcNativeAmount(dst.chainId, gas, amount);
+  return src.bridge.calcSrcNativeAmount(dst.chainId, amount);
 };
 
 export const showChain = async (chains: Chain[], chIdx: number) => {
@@ -488,6 +489,19 @@ export const fillNativeToken = async (
   return chain.wallet.sendTransaction(tx);
 };
 
+export const fillBridgeNativeToken = async (
+  chain: Chain,
+  bridge: toki.tt.IBridge,
+  num_eth: number,
+): Promise<ethers.TransactionResponse> => {
+  const goal = ethers.parseUnits(`${num_eth}`, "ether");
+  const current = await chain.provider.getBalance(await bridge.getAddress());
+  const value =  (goal <= current)
+    ? ethers.parseUnits("0", "ether")
+    : ethers.parseUnits(`${num_eth}`, "ether");
+  return bridge.refill({ value });
+};
+
 export const deposit = async (
   chains: Chain[],
   chIndex: number,
@@ -567,7 +581,9 @@ export const deposit = async (
       const relayerFee = await calcRelayerFee(
         myChain,
         peerPool.chain,
-        FUNCTION_TYPE.SendCredit
+        FUNCTION_TYPE.SendCredit,
+        new Uint8Array(),
+        0
       );
       const tx = await receipt(
         myChain.bridge.sendCredit(

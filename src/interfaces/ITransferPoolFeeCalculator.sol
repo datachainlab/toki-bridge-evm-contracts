@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "../interfaces/IPool.sol";
 
@@ -33,7 +33,7 @@ interface ITransferPoolFeeCalculator {
      * @param lpFee The liquidity provider fee.
      * @param eqFee The equilibrium fee.
      * @param eqReward The equilibrium reward.
-     * @param lastKnownBalance The last known balance.
+     * @param balanceDecrease Balance reduction in source pool that will update destination pool's last known balance
      */
     struct FeeInfo {
         uint256 amountGD;
@@ -41,7 +41,7 @@ interface ITransferPoolFeeCalculator {
         uint256 lpFee;
         uint256 eqFee;
         uint256 eqReward;
-        uint256 lastKnownBalance;
+        uint256 balanceDecrease;
     }
 
     /**

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "../interfaces/ITokiErrors.sol";
 import "../interfaces/ITokiOuterServiceReceiver.sol";
@@ -24,6 +24,8 @@ contract MockOuterService is ITokiErrors, ITokiOuterServiceReceiver {
 
     // for test, force fail any receive functions
     bool public forceFail;
+    // for test, consume high gas
+    bool public usesHighGas;
 
     ReceiveMsg[] public receivedMsgs;
 
@@ -64,6 +66,12 @@ contract MockOuterService is ITokiErrors, ITokiOuterServiceReceiver {
         if (forceFail) {
             revert TokiMock("onReceivePool force fail");
         }
+        if (usesHighGas) {
+            uint256[] memory arr = new uint256[](10_000);
+            for (uint256 i = 0; i < 10_000; i++) {
+                arr[i] = i;
+            }
+        }
         string memory port = PORT.toString();
         receivedMsgs.push(
             ReceiveMsg({
@@ -80,6 +88,10 @@ contract MockOuterService is ITokiErrors, ITokiOuterServiceReceiver {
     // ======================= for test ====================
     function setForceFail(bool forceFail_) external {
         forceFail = forceFail_;
+    }
+
+    function setUsesHighGas(bool usesHighGas_) external {
+        usesHighGas = usesHighGas_;
     }
 }
 

@@ -8,9 +8,12 @@
     "appVersion": 1,
     "portId": "toki",
     "nativeTokenPriceFeed": {
+      "decimals": 8,
       "initialPseudoPrice_BN": "400e+8"
     },
+    "nativeTokenPriceFeedValidityPeriodSec": 21600,
     "relayerFeeGasUsed_BN": "250000",
+    "relayerFeeGasPerPayloadLength_BN": "700",
     "relayerFeePremiumBPS_BN": "10500",
     "receiveRetryBlock": 403200,
     "withdrawRetryBlock": 403200,
@@ -43,8 +46,10 @@
       "mintCap_BN": "500e+18",
       "basePrice_BN": "1e+8",
       "priceFeed": {
+        "decimals": 8,
         "initialPseudoPrice_BN": "1e+8"
       },
+      "priceFeedValidityPeriodSec": 129600,
       "flowRateLimiter": {
         "limitLD_BN": "1_000_000e+18",
         "thresholdLD_BN": "50_000e+18",
@@ -101,8 +106,10 @@
       "mintCap_BN": "500e+18",
       "basePrice_BN": "1e+8",
       "priceFeed": {
+        "decimals": 8,
         "initialPseudoPrice_BN": "1e+8"
       },
+      "priceFeedValidityPeriodSec": 129600,
       "flowRateLimiter": {
         "limitLD_BN": "1_000_000e+18",
         "thresholdLD_BN": "50_000e+18",
@@ -160,8 +167,10 @@
       "mintCap_BN": "1e+17",
       "basePrice_BN": "4000e+8",
       "priceFeed": {
+        "decimals": 8,
         "initialPseudoPrice_BN": "4000e+8"
       },
+      "priceFeedValidityPeriodSec": 129600,
       "flowRateLimiter": {
         "limitLD_BN": "200e+18",
         "thresholdLD_BN": "167e+17",
@@ -195,8 +204,10 @@
         "refuelSrcCap_BN": "5e+16",
         "initialGasPrice_BN": "10e+9",
         "nativeTokenPriceFeed": {
+          "decimals": 8,
           "initialPseudoPrice_BN": "4000e+8"
-        }
+        },
+        "nativeTokenPriceFeedValidityPeriodSec": 21600
       }
     ],
     "refuelDstCap_BN": "5e+16"

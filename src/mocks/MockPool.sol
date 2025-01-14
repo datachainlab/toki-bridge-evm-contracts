@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "../interfaces/ITokiErrors.sol";
 import "../interfaces/IPool.sol";
@@ -270,6 +270,24 @@ contract MockPool is ITokiErrors, IPool {
         callWithdrawInstant = CallWithdrawInstant(from, amountLP, to);
         amountGD = amountLP;
     }
+
+    function handleRecvFailure(
+        uint256 peerChainId,
+        uint256 peerPoolId,
+        address to,
+        ITransferPoolFeeCalculator.FeeInfo memory feeInfo
+    ) external {}
+
+    /**
+     * @dev Receive delta info ( and re-mint lp token ) to keep the delta consistent.
+     */
+    function handleWithdrawConfirmFailure(
+        uint256 peerChainId,
+        uint256 peerPoolId,
+        address to,
+        uint256 amountGD,
+        uint256 amountToMintGD
+    ) external {}
 
     function setTransferStop(bool transferStop) external {
         callSetTransferStop = CallSetTransferStop(transferStop);

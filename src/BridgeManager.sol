@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -25,6 +25,10 @@ abstract contract BridgeManager is
     IBridgeManager,
     BridgeBase
 {
+    function refill() external payable onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit Refill(msg.value);
+    }
+
     // draw is for rebalancing the native token balance.
     // native token held in the contract is mainly used for the refueling.
     function draw(
