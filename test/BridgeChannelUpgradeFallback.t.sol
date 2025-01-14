@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/interfaces/IBridge.sol";
@@ -347,17 +347,22 @@ contract BridgeChannelUpgradeFallbackTest is ICS04UpgradeBase {
                     string memory newConnectionId0,
                     string memory newConnectionId1
                 ) = ibcHandler.createLocalhostConnection();
-                handshakeUpgrade(
-                    channel0,
-                    channel1,
-                    validProposals(
-                        proposedOrder,
-                        newConnectionId0,
-                        newConnectionId1,
-                        nextVersion
-                    ),
-                    flow
+
+                handshakeUpgradeWithCallbacks(
+                    HandshakeUpgradeWithCallbacksArgs(
+                        channel0,
+                        channel1,
+                        validProposals(
+                            proposedOrder,
+                            newConnectionId0,
+                            newConnectionId1,
+                            nextVersion
+                        ),
+                        flow,
+                        emptyCallbacks()
+                    )
                 );
+
                 (Channel.Data memory channelData0, ) = ibcHandler.getChannel(
                     channel0.portId,
                     channel0.channelId

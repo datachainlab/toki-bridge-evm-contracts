@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // solhint-disable-next-line one-contract-per-file
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "../Pool.sol";
 

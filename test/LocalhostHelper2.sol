@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import {IIBCHandler} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/25-handler/IIBCHandler.sol";
 import {LocalhostClientLib} from "@hyperledger-labs/yui-ibc-solidity/contracts/clients/09-localhost/LocalhostClient.sol";

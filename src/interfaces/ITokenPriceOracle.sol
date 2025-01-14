@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 interface ITokenPriceOracle {
     event PriceUpdated(uint256 indexed tokenId, uint256 price);

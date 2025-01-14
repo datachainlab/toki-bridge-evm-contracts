@@ -4,7 +4,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 
 const DEFAULT_COMPILER_SETTINGS = {
-  version: "0.8.24",
+  version: "0.8.28",
   settings: {
     evmVersion: "cancun",
     viaIR: true,
@@ -29,7 +29,7 @@ const config: HardhatUserConfig = {
       "src/Pool.sol": changeRuns(400),
       "src/mocks/MockUpgradePool.sol": changeRuns(100),
       "src/Bridge.sol": changeRuns(100),
-      "src/BridgeFallback.sol": changeRuns(3200),
+      "src/BridgeFallback.sol": changeRuns(800),
       "src/mocks/MockUpgradeBridge.sol": changeRuns(100),
       "src/clients/RecoveredLCPClientUpgradeable.sol": changeRuns(3200),
     },

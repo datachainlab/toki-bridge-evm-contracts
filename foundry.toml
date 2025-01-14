@@ -4,10 +4,10 @@ out = 'out'
 libs = ['lib', 'node_modules']
 gas_reports=['*']
 via-ir = false
-solc_version = "0.8.24"
+solc_version = "0.8.28"
 evm_version = "cancun"
 optimizer = true
-optimizer_runs = 200
+optimizer_runs = 100
 fs_permissions = [{ access = "read", path = "./"}]
 
 

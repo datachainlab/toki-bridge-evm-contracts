@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.20;
+pragma solidity 0.8.28;
 
 // original: https://github.com/hyperledger-labs/yui-ibc-solidity/blob/ca7a56c85749b83d5fb35aae7cd7e0b07e655b61/contracts/apps/commons/IBCChannelUpgradableModule.sol
 

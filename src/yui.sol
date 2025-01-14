@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.13;
+pragma solidity 0.8.28;
 
 import "@hyperledger-labs/yui-ibc-solidity/contracts/core/02-client/IBCClient.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/core/03-connection/IBCConnectionSelfStateNoValidation.sol";
