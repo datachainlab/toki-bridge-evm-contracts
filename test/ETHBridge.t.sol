@@ -165,4 +165,16 @@ contract ETHBridgeTest is Test {
             payable(alice)
         );
     }
+
+    function testReceiveFail() public {
+        uint256 amount = 1 wei;
+        vm.deal(alice, amount);
+        vm.prank(alice);
+
+        (bool failAsExpected, ) = payable(address(ethBridge)).call{
+            value: amount
+        }("");
+        assertFalse(failAsExpected, "should fail");
+        assertEq(alice.balance, amount);
+    }
 }
