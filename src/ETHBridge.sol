@@ -25,8 +25,6 @@ contract ETHBridge is ITokiErrors, IETHBridge {
         ETH_POOL_ID = ethPoolId;
     }
 
-    receive() external payable {}
-
     function depositETH() external payable {
         if (msg.value == 0) {
             revert TokiZeroAmount("msg.value");

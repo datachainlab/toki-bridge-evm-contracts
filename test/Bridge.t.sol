@@ -81,7 +81,8 @@ contract BridgeTest is Test {
 
     // same values as in BridgeStore.sol
     uint256 public constant MAX_TO_LENGTH = 1024; // 1KB
-    uint256 public constant MAX_PAYLOAD_LENGTH = 10 * 1024; // 1KB
+    uint256 public constant MAX_PAYLOAD_LENGTH = 10 * 1024; // 10KB
+    uint256 public constant MAX_OUTER_GAS = 5_000_000; // 5M
 
     uint8 internal constant TYPE_TRANSFER_POOL = 1;
     uint8 internal constant TYPE_CREDIT = 2;
@@ -532,6 +533,30 @@ contract BridgeTest is Test {
             bbob,
             0,
             IBCUtils.ExternalInfo(payload, 0),
+            alice
+        );
+    }
+
+    function testTransferPoolFailWithMaxOuterGasValidation() public {
+        uint256 outerGas = MAX_OUTER_GAS + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokiErrors.TokiExceed.selector,
+                "dstOuterGas",
+                outerGas,
+                MAX_OUTER_GAS
+            )
+        );
+        bridge.transferPool{value: 1 * DENOMI}(
+            SRC_CHANNEL,
+            0,
+            1,
+            100,
+            0,
+            bbob,
+            0,
+            IBCUtils.ExternalInfo("", outerGas),
             alice
         );
     }

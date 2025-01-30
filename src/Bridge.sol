@@ -197,6 +197,7 @@ contract Bridge is
         }
         _validateToLength(to);
         _validatePayloadLength(externalInfo.payload);
+        _validateDstOuterGas(externalInfo.dstOuterGas);
 
         uint256 dstChainId = getChainId(srcChannel, true);
 
@@ -290,6 +291,7 @@ contract Bridge is
         }
         _validateToLength(to);
         _validatePayloadLength(externalInfo.payload);
+        _validateDstOuterGas(externalInfo.dstOuterGas);
 
         uint256 dstChainId = getChainId(srcChannel, true);
 
@@ -1082,6 +1084,12 @@ contract Bridge is
     function _validatePayloadLength(bytes calldata payload) internal pure {
         if (payload.length > MAX_PAYLOAD_LENGTH) {
             revert TokiExceed("payload", payload.length, MAX_PAYLOAD_LENGTH);
+        }
+    }
+
+    function _validateDstOuterGas(uint256 dstOuterGas) internal pure {
+        if (dstOuterGas > MAX_OUTER_GAS) {
+            revert TokiExceed("dstOuterGas", dstOuterGas, MAX_OUTER_GAS);
         }
     }
 
