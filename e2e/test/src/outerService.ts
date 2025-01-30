@@ -148,7 +148,6 @@ type Prepare = {
   alice: ethers.Signer,
   aliceAddress: string,
   outerAddress: string,
-  dstOuterGas: bigint,
 };
 const prepare = async (name: string, chains: Chain[]): Promise<Prepare> => {
   console.log(`-- ${name} -----------`);
@@ -162,7 +161,6 @@ const prepare = async (name: string, chains: Chain[]): Promise<Prepare> => {
   const pooledTokenAmount = BigInt(47) * (BigInt(10) ** src_decimals);
   const minPooledTokenAmount = pooledTokenAmount * BigInt(988) / BigInt(1000);
   const refuelAmount = ethers.parseUnits("0.02", "ether");
-  const dstOuterGas = ethers.parseUnits("10", "mwei");
   const alice = lib.createSigner(chains[0]);
   const aliceAddress = await alice.getAddress();
   const outerAddress = await chains[1].mockOuterService.getAddress();
@@ -207,7 +205,6 @@ const prepare = async (name: string, chains: Chain[]): Promise<Prepare> => {
     alice,
     aliceAddress,
     outerAddress,
-    dstOuterGas,
   };
 }
 
@@ -288,7 +285,8 @@ export const testOuterService_success = async (chains: Chain[]) => {
   dump(state0);
   const tt = await transferPool(chains, pre, {
     payload: new Uint8Array([39,40,41]),
-    dstOuterGas: pre.dstOuterGas,
+    // MockOuterService.onReceivePool consumes more than 100000 gas
+    dstOuterGas: BigInt(200000),
   });
   console.log("seq=", tt.seq);
 
@@ -316,7 +314,7 @@ export const testOuterService_fail_outOfGas = async (chains: Chain[]) => {
   dump(state0);
   const tt = await transferPool(chains, pre, {
     payload: new Uint8Array([39,40,41]),
-    dstOuterGas: ethers.parseUnits("1", "wei"),
+    dstOuterGas: BigInt(1),
   });
   console.log("seq=", tt.seq);
 
@@ -344,7 +342,7 @@ export const testOuterService_fail_revert = async (chains: Chain[]) => {
   dump(state0);
   const tt = await transferPool(chains, pre, {
     payload: new Uint8Array([39,40,41]),
-    dstOuterGas: pre.dstOuterGas,
+    dstOuterGas: BigInt(200000),
   });
 
   const state = await waitState(

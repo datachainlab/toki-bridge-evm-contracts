@@ -57,6 +57,8 @@ abstract contract BridgeStore is ITokiErrors {
     uint256 internal constant MAX_TO_LENGTH = 1024; // 1KB
     // the maximum length of the ExternalInfo.payload that can be sent in a packet
     uint256 internal constant MAX_PAYLOAD_LENGTH = 10 * 1024; // 10KB
+    // the maximum gas that can be used in the outer contract call on the destination chain
+    uint256 internal constant MAX_OUTER_GAS = 5_000_000; // 5M
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint256 internal immutable APP_VERSION;
